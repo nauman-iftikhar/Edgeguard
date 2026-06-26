@@ -2,8 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN pip install flask flask-cors minio requests --break-system-packages 2>/dev/null || \
-    pip install flask flask-cors minio requests
+RUN pip install flask flask-cors minio requests sqlalchemy psycopg2-binary
 
 COPY backend.py .
 

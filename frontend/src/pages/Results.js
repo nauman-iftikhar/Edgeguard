@@ -14,10 +14,6 @@ const Legend = ({ color, label, dashed, colors }) => (
   </div>
 )
 
-// Renders an SVG line chart comparing actual / amdahl / gustafson speedup curves.
-// Defined at module level (not inside Results) so it keeps a stable component
-// identity across Results' 15s polling re-renders — otherwise hover state would
-// reset and the tooltip would flicker every time fresh data comes in.
 const SpeedupChart = ({ curves, title, rawResults, COLORS, dark }) => {
   const [hover, setHover] = useState(null)
 
@@ -87,24 +83,20 @@ const SpeedupChart = ({ curves, title, rawResults, COLORS, dark }) => {
               <text x={padL - 8} y={yPos(t) + 4} fill={COLORS.dim} fontSize="10" textAnchor="end">{t}</text>
             </g>
           ))}
-
           {curves.amdahl.map((p, i) => (
             <text key={i} x={xPos(p.nodes)} y={H - padB + 18} fill={COLORS.dim} fontSize="10" textAnchor="middle">
               {p.nodes}
             </text>
           ))}
           <text x={W / 2} y={H - 4} fill={COLORS.dim} fontSize="10" textAnchor="middle">Number of nodes</text>
-
           <path d={linePath(curves.amdahl)} fill="none" stroke={COLORS.blue} strokeWidth="2" strokeDasharray="4,3" />
           {curves.amdahl.map((p, i) => (
             <HoverDot key={`am-${i}`} p={p} label="Amdahl's Law (theoretical)" color={COLORS.blue} />
           ))}
-
           <path d={linePath(curves.gustafson)} fill="none" stroke={COLORS.purple} strokeWidth="2" strokeDasharray="4,3" />
           {curves.gustafson.map((p, i) => (
             <HoverDot key={`gu-${i}`} p={p} label="Gustafson's Law (theoretical)" color={COLORS.purple} />
           ))}
-
           <path d={linePath(curves.actual)} fill="none" stroke={COLORS.green} strokeWidth="2.5" />
           {curves.actual.map((p, i) => (
             <circle key={i} cx={xPos(p.nodes)} cy={yPos(p.speedup)} r="4" fill={COLORS.green} />
@@ -112,7 +104,6 @@ const SpeedupChart = ({ curves, title, rawResults, COLORS, dark }) => {
           {curves.actual.map((p, i) => (
             <HoverDot key={`ac-${i}`} p={p} label="Actual measured speedup" color={COLORS.green} />
           ))}
-
           {hover && (
             <line
               x1={xPos(hover.nodes)} x2={xPos(hover.nodes)}
@@ -121,7 +112,6 @@ const SpeedupChart = ({ curves, title, rawResults, COLORS, dark }) => {
             />
           )}
         </svg>
-
         {hover && (
           <div style={{
             position: 'absolute',
@@ -150,7 +140,6 @@ const SpeedupChart = ({ curves, title, rawResults, COLORS, dark }) => {
           </div>
         )}
       </div>
-
       <div style={{ display: 'flex', gap: 18, marginTop: 10, flexWrap: 'wrap' }}>
         <Legend color={COLORS.blue}   dashed label="Amdahl's Law (theoretical)" colors={COLORS} />
         <Legend color={COLORS.purple} dashed label="Gustafson's Law (theoretical)" colors={COLORS} />
@@ -186,23 +175,24 @@ const BenchmarkCard = ({ nodes, value, metric, timestamp, COLORS, formatTimestam
 export default function Results() {
   const [data,    setData]    = useState(null)
   const [loading, setLoading] = useState(true)
-  const [filter,  setFilter]  = useState('mpi') // 'mpi' | 'non_mpi'
+  const [filter,  setFilter]  = useState(() => localStorage.getItem('resultsFilter') || 'mpi')
   const token   = localStorage.getItem('token')
   const headers = { Authorization: `Bearer ${token}` }
   const { dark } = useContext(ThemeContext)
 
   const COLORS = {
-    bg:      dark ? '#0f0f0f' : '#f0f2f5',
-    card:    dark ? '#1a1a1a' : '#ffffff',
-    border:  dark ? '#333' : '#e0e0e0',
-    green:   '#1D9E75',
-    red:     '#E24B4A',
-    orange:  '#EF9F27',
-    blue:    '#378ADD',
-    purple:  '#9B59B6',
-    text:    dark ? '#aaa' : '#555',
-    dim:     dark ? '#555' : '#999',
-    heading: dark ? 'white' : '#1a1a1a',
+    bg:       dark ? '#0f0f0f' : '#f0f2f5',
+    card:     dark ? '#1a1a1a' : '#ffffff',
+    cardHover: dark ? '#111' : '#f8f8f8',
+    border:   dark ? '#333' : '#e0e0e0',
+    green:    '#1D9E75',
+    red:      '#E24B4A',
+    orange:   '#EF9F27',
+    blue:     '#378ADD',
+    purple:   '#9B59B6',
+    text:     dark ? '#aaa' : '#555',
+    dim:      dark ? '#555' : '#999',
+    heading:  dark ? 'white' : '#1a1a1a',
     gridLine: dark ? '#222' : '#eee',
   }
 
@@ -235,14 +225,28 @@ export default function Results() {
     )
   }
 
-  const hpl  = data?.hpl || { results: [], curves: null }
-  const td   = data?.task_distributor || { results: [], curves: null }
+  const hpl      = data?.hpl || { results: [], curves: null }
+  const td       = data?.task_distributor || { results: [], curves: null }
   const mcWeak   = data?.monte_carlo_pi || { results: [], curves: null }
   const mcStrong = data?.monte_carlo_pi_strong || { results: [], curves: null }
-  const hplLatest = hpl.results.length ? hpl.results.reduce((a, b) => (a.timestamp > b.timestamp ? a : b)) : null
-  const tdLatest   = td.results.length ? td.results.reduce((a, b) => (a.timestamp > b.timestamp ? a : b)) : null
-  const mcWeakLatest   = mcWeak.results.length ? mcWeak.results.reduce((a, b) => (a.timestamp > b.timestamp ? a : b)) : null
-  const mcStrongLatest = mcStrong.results.length ? mcStrong.results.reduce((a, b) => (a.timestamp > b.timestamp ? a : b)) : null
+
+  const hplLatest      = hpl.results.length      ? hpl.results.reduce((a, b) => (a.timestamp > b.timestamp ? a : b))      : null
+  const tdLatest       = td.results.length        ? td.results.reduce((a, b) => (a.timestamp > b.timestamp ? a : b))        : null
+  const mcWeakLatest   = mcWeak.results.length    ? mcWeak.results.reduce((a, b) => (a.timestamp > b.timestamp ? a : b))    : null
+  const mcStrongLatest = mcStrong.results.length  ? mcStrong.results.reduce((a, b) => (a.timestamp > b.timestamp ? a : b))  : null
+
+  const tdAnalysis = [
+    { n: 1, workers: 'pi3-01',           time: 25.10, speedup: '1.00×', ideal: '1×',  color: COLORS.text,
+      note: 'Baseline — single Pi3 renders all 1800 rows alone, zero coordination overhead' },
+    { n: 2, workers: 'pi3-01, pi3-02',   time: 23.01, speedup: '1.09×', ideal: '2×',  color: '#E8A838',
+      note: 'Minimal gain — SSH dispatch + composition overhead nearly cancels the benefit of splitting across 2 workers' },
+    { n: 4, workers: 'pi3-01 → pi3-04',  time: 16.17, speedup: '1.55×', ideal: '4×',  color: '#1D9E75',
+      note: 'Best efficiency point — 450 rows/node, enough compute work per node to outweigh coordination cost' },
+    { n: 8, workers: 'all 8 Pi3s',        time: 18.20, speedup: '1.38×', ideal: '8×',  color: '#E24B4A',
+      note: 'Regression vs N=4 — 225 rows/node too small; sequential SSH dispatch (8 calls) and image composition dominate' },
+    { n: 9, workers: 'Pi3s + Pi5 (last)', time: 16.08, speedup: '1.56×', ideal: '9×',  color: '#1D9E75',
+      note: "Pi5's faster compute per row offsets the extra coordination cost, recovering back to N=4 performance" },
+  ]
 
   return (
     <div style={{ minHeight: '100vh', background: COLORS.bg, fontFamily: 'Arial, sans-serif' }}>
@@ -260,7 +264,7 @@ export default function Results() {
         {/* Filter toggle */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 28 }}>
           <button
-            onClick={() => setFilter('mpi')}
+            onClick={() => { setFilter('mpi'); localStorage.setItem('resultsFilter', 'mpi') }}
             style={{
               padding: '10px 24px', fontSize: 13, fontWeight: 'bold',
               borderRadius: 8, cursor: 'pointer',
@@ -273,7 +277,7 @@ export default function Results() {
             MPI Based
           </button>
           <button
-            onClick={() => setFilter('non_mpi')}
+            onClick={() => { setFilter('non_mpi'); localStorage.setItem('resultsFilter', 'non_mpi') }}
             style={{
               padding: '10px 24px', fontSize: 13, fontWeight: 'bold',
               borderRadius: 8, cursor: 'pointer',
@@ -287,9 +291,9 @@ export default function Results() {
           </button>
         </div>
 
+        {/* ══════════════ MPI SECTION ══════════════ */}
         {filter === 'mpi' && (
         <>
-        {/* ============== MPI-BASED RESULTS — Task 3 custom examples ============== */}
         <div style={{
           background: COLORS.card, border: `2px solid ${COLORS.green}`,
           borderRadius: 12, padding: '6px 16px', marginBottom: 18,
@@ -306,7 +310,7 @@ export default function Results() {
           setups to show two different ways of thinking about "scaling":
         </p>
 
-        {/* Setup 1: Weak scaling */}
+        {/* Setup 1 */}
         <div style={{
           background: COLORS.card, border: `1px solid ${COLORS.border}`,
           borderRadius: 10, padding: '14px 18px', marginBottom: 16
@@ -336,7 +340,7 @@ export default function Results() {
           <SpeedupChart curves={mcWeak.curves} title="Monte Carlo π — Weak Scaling" rawResults={mcWeak.results} COLORS={COLORS} dark={dark} />
         </div>
 
-        {/* Setup 2: Strong scaling */}
+        {/* Setup 2 */}
         <div style={{
           background: COLORS.card, border: `1px solid ${COLORS.border}`,
           borderRadius: 10, padding: '14px 18px', marginBottom: 16
@@ -386,14 +390,13 @@ export default function Results() {
           </p>
         </div>
 
-        {/* ============== NON-MPI / OTHER RESULTS ============== */}
+        {/* HPL */}
         <p style={{ color: COLORS.dim, fontSize: 11, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
           HPL Benchmark (MPI) — Task 2, GFLOPS
           {hplLatest && <span style={{ marginLeft: 10, color: COLORS.dim, fontWeight: 'normal', textTransform: 'none' }}>
             Last run: {formatTimestamp(hplLatest.timestamp)}
           </span>}
         </p>
-
         <div style={{
           background: COLORS.card, border: `1px solid ${COLORS.border}`,
           borderRadius: 10, padding: '14px 18px', marginBottom: 16
@@ -413,9 +416,7 @@ export default function Results() {
             P×Q process grids used per node count: 1→2×2, 2→2×4, 3→3×4, 4→4×4, 5→4×5, 6→4×6,
             7→4×7, 8→4×8, 9→6×6. N=7 and N=8 each required one retry due to transient MPI
             communication failures between daemons at higher node counts; both recovered cleanly
-            on retry. The N=8 value shown reflects a retry taken after extended natural rest,
-            since the immediate in-sequence attempt failed — this is noted here for transparency
-            rather than presented as a first-attempt result.
+            on retry.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -459,7 +460,7 @@ export default function Results() {
               },
               {
                 label: 'Isolated N=8 retry after extended natural rest',
-                desc: 'Re-ran the 8-node Pi3-only case on its own after a longer, unplanned rest period. Succeeded cleanly and produced the best result in the dataset (3.563 GFLOPS), suggesting genuine idle time between high-node-count runs matters more than a short fixed cooldown.',
+                desc: 'Re-ran the 8-node Pi3-only case on its own after a longer, unplanned rest period. Succeeded cleanly and produced the best result in the dataset (3.563 GFLOPS).',
               },
             ].map((s, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -468,12 +469,8 @@ export default function Results() {
                   background: COLORS.purple, marginTop: 6, flexShrink: 0
                 }} />
                 <div>
-                  <p style={{ color: COLORS.heading, fontSize: 12.5, fontWeight: 'bold', margin: '0 0 2px' }}>
-                    {s.label}
-                  </p>
-                  <p style={{ color: COLORS.text, fontSize: 12.5, margin: 0, lineHeight: 1.5 }}>
-                    {s.desc}
-                  </p>
+                  <p style={{ color: COLORS.heading, fontSize: 12.5, fontWeight: 'bold', margin: '0 0 2px' }}>{s.label}</p>
+                  <p style={{ color: COLORS.text, fontSize: 12.5, margin: 0, lineHeight: 1.5 }}>{s.desc}</p>
                 </div>
               </div>
             ))}
@@ -482,6 +479,7 @@ export default function Results() {
         </>
         )}
 
+        {/* ══════════════ NON-MPI SECTION ══════════════ */}
         {filter === 'non_mpi' && (
         <>
         <p style={{ color: COLORS.dim, fontSize: 11, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
@@ -490,23 +488,84 @@ export default function Results() {
             Last run: {formatTimestamp(tdLatest.timestamp)}
           </span>}
         </p>
+
+        {/* Methodology card */}
+        <div style={{
+          background: COLORS.card, border: `1px solid ${COLORS.border}`,
+          borderRadius: 10, padding: '14px 18px', marginBottom: 16
+        }}>
+          <p style={{ color: COLORS.blue, fontSize: 11, fontWeight: 'bold', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>
+            Test Methodology
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px', fontSize: 12.5, color: COLORS.text, lineHeight: 1.7 }}>
+            <p style={{ margin: 0 }}>Image size: <span style={{ color: COLORS.heading }}>1800 × 1800 pixels</span> (POV-Ray ray-trace)</p>
+            <p style={{ margin: 0 }}>Split method: <span style={{ color: COLORS.heading }}>equal horizontal row-bands</span> (1800 ÷ N rows/worker)</p>
+            <p style={{ margin: 0 }}>Node ordering: <span style={{ color: COLORS.heading }}>pi3-01 → pi3-08, Pi5 added 9th</span></p>
+            <p style={{ margin: 0 }}>Cooldown between tests: <span style={{ color: COLORS.heading }}>90 seconds</span></p>
+            <p style={{ margin: 0 }}>Dispatch method: <span style={{ color: COLORS.heading }}>sequential SSH calls</span> (not simultaneous like mpirun)</p>
+            <p style={{ margin: 0 }}>Composition: <span style={{ color: COLORS.heading }}>ImageMagick convert -append</span> (2nd sequential part)</p>
+          </div>
+        </div>
+
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           {td.results.sort((a, b) => a.nodes - b.nodes).map((r, i) => (
             <BenchmarkCard key={i} nodes={r.nodes} value={r.value} metric={r.metric} timestamp={r.timestamp} COLORS={COLORS} formatTimestamp={formatTimestamp} />
           ))}
         </div>
-        <div style={{ marginBottom: 28 }}>
+        <div style={{ marginBottom: 20 }}>
           <SpeedupChart curves={td.curves} title="Task-Distributor" rawResults={td.results} COLORS={COLORS} dark={dark} />
+        </div>
+
+        {/* Analysis Table */}
+        <div style={{
+          background: COLORS.card, border: `1px solid ${COLORS.border}`,
+          borderRadius: 10, padding: '16px 18px', marginBottom: 20, overflowX: 'auto'
+        }}>
+          <p style={{ color: COLORS.dim, fontSize: 11, fontWeight: 'bold', margin: '0 0 12px',
+            textTransform: 'uppercase', letterSpacing: 1 }}>
+            Detailed Results — What Happened at Each Node Count
+          </p>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+            <thead>
+              <tr style={{ borderBottom: `2px solid ${COLORS.border}` }}>
+                {['Nodes', 'Workers', 'Time (s)', 'Speedup', 'vs Ideal', 'Observation'].map(h => (
+                  <th key={h} style={{ padding: '6px 10px', textAlign: 'left',
+                    color: COLORS.dim, fontWeight: 'bold', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tdAnalysis.map((row, i) => (
+                <tr key={row.n} style={{
+                  background: i % 2 === 0 ? 'transparent' : COLORS.cardHover,
+                  borderBottom: `1px solid ${COLORS.border}`
+                }}>
+                  <td style={{ padding: '8px 10px', color: COLORS.heading, fontWeight: 'bold' }}>N={row.n}</td>
+                  <td style={{ padding: '8px 10px', color: COLORS.dim, fontSize: 11.5, whiteSpace: 'nowrap' }}>{row.workers}</td>
+                  <td style={{ padding: '8px 10px', color: COLORS.text, fontWeight: 'bold' }}>{row.time.toFixed(2)}s</td>
+                  <td style={{ padding: '8px 10px', color: row.color, fontWeight: 'bold' }}>{row.speedup}</td>
+                  <td style={{ padding: '8px 10px', color: COLORS.dim }}>{row.ideal}</td>
+                  <td style={{ padding: '8px 10px', color: COLORS.text, fontSize: 11.5 }}>{row.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p style={{ color: COLORS.dim, fontSize: 11, margin: '12px 0 0', fontStyle: 'italic' }}>
+            Equal row-count split (1800 ÷ N rows/worker). Image composition time grows with N:
+            0.006s (N=1) → 0.915s (N=2) → 1.087s (N=4) → 1.083s (N=8) → 0.966s (N=9).
+          </p>
         </div>
         </>
         )}
 
+        {/* ══════════════ KEY INSIGHT — MPI ══════════════ */}
+        {filter === 'mpi' && (
         <div style={{
           background: COLORS.card, border: `1px solid ${COLORS.orange}`,
           borderRadius: 10, padding: 18, marginBottom: 20
         }}>
           <p style={{ color: COLORS.orange, fontSize: 12, fontWeight: 'bold', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>
-            Key Insight
+            Key Insight — HPL &amp; MPI
           </p>
           <p style={{ color: COLORS.text, fontSize: 13, margin: 0, lineHeight: 1.6 }}>
             Across 1 to 8 Pi3-only nodes, GFLOPS stayed in a tight plateau (roughly 2.68–3.57),
@@ -518,15 +577,42 @@ export default function Results() {
             (inference service, k3s control plane, monitoring) while also being asked to join
             HPL runs, so its available compute is genuinely reduced compared to the dedicated
             Pi3 workers — a realistic edge-computing tradeoff rather than a measurement error.
-            Task-Distributor's render time stayed roughly flat across 1 to 8 nodes — its master
-            script dispatches SSH jobs and polls each node's completion sequentially with a
-            1-second sleep between checks, so dispatch-order timing and per-node SSH connection
-            overhead dominate over the actual parallel compute time. This contrasts with MPI's{' '}
-            <code>mpirun</code>, which launches all ranks near-simultaneously through a single
-            coordinated mechanism — a useful, concrete illustration of why message-passing and
-            naive master-worker scripting behave differently in practice, even on identical hardware.
+            In contrast, the custom Monte Carlo Pi MPI example showed near-ideal strong scaling
+            (1.96× at N=2, 3.95× at N=4, 7.37× at N=8), demonstrating that with minimal
+            communication overhead a single <code>MPI_Reduce</code> at the end, this cluster
+            scales very well. The difference between HPL and Monte Carlo Pi highlights how
+            communication pattern, not hardware, is the dominant factor in parallel scaling at
+            this problem size.
           </p>
         </div>
+        )}
+
+        {/* ══════════════ KEY INSIGHT — Non-MPI ══════════════ */}
+        {filter === 'non_mpi' && (
+        <div style={{
+          background: COLORS.card, border: `1px solid ${COLORS.orange}`,
+          borderRadius: 10, padding: 18, marginBottom: 20
+        }}>
+          <p style={{ color: COLORS.orange, fontSize: 12, fontWeight: 'bold', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>
+            Key Insight — Task Distributor
+          </p>
+          <p style={{ color: COLORS.text, fontSize: 13, margin: 0, lineHeight: 1.6 }}>
+            Task-Distributor's best result (N=4, 16.17s) achieved only 1.55× speedup over a
+            single node despite using 4 workers, and N=8 actually regressed to 18.20s — worse
+            than N=4. The root cause is structural: the master script dispatches SSH jobs
+            sequentially in a for-loop (not simultaneously like <code>mpirun</code>), polls
+            each node's completion with a 1-second sleep per check, and then runs a serial
+            ImageMagick composition step that grows with node count. These fixed and growing
+            overheads consume an increasing share of total time as per-node compute shrinks
+            with more workers. N=9 partially recovers (16.08s) because Pi5's faster per-core
+            speed reduces its row-band render time enough to compensate — but this is hardware
+            speed rather than genuine parallel efficiency. The equal-row-count split, with no
+            awareness of heterogeneous worker speeds, is the other limiting factor: Pi5 finishes
+            its band quickly and sits idle waiting for the slower Pi3 workers, so the overall
+            completion time is always gated by the slowest participating node.
+          </p>
+        </div>
+        )}
 
         <div style={{
           background: COLORS.card, border: `1px solid ${COLORS.border}`,

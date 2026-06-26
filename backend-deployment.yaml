@@ -1,20 +1,8 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: backend-service
-spec:
-  type: NodePort
-  selector:
-    app: backend
-  ports:
-    - port: 8000
-      targetPort: 8000
-      nodePort: 30800
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
+  namespace: default
 spec:
   replicas: 2
   selector:
@@ -27,14 +15,16 @@ spec:
     spec:
       affinity:
         podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: app
-                    operator: In
-                    values:
-                      - backend
-              topologyKey: kubernetes.io/hostname
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - backend
+                topologyKey: kubernetes.io/hostname
       containers:
         - name: backend
           image: 10.10.10.1:5000/ss2026-backend:latest
@@ -42,26 +32,25 @@ spec:
           ports:
             - containerPort: 8000
           env:
-            - name: MINIO_HOST
-              value: "10.10.10.1:30900"
-            - name: MINIO_ACCESS
-              value: "minioadmin"
-            - name: MINIO_SECRET
-              value: "minioadmin"
-          readinessProbe:
-            httpGet:
-              path: /api/health
-              port: 8000
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            failureThreshold: 2
-          livenessProbe:
-            httpGet:
-              path: /api/health
-              port: 8000
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            failureThreshold: 3
+            - name: DB_HOST
+              value: "postgres"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
           volumeMounts:
             - name: shared-storage
               mountPath: /shared
@@ -69,3 +58,17 @@ spec:
         - name: shared-storage
           persistentVolumeClaim:
             claimName: shared-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    app: backend
+  ports:
+    - port: 8000
+      targetPort: 8000
+      nodePort: 30800

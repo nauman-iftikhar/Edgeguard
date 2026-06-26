@@ -20,6 +20,7 @@ const POD_LABELS = {
   backend:  'Backend API',
   minio:    'MinIO Storage',
   frontend: 'Frontend',
+  postgres: 'PostgreSQL Database',
 }
 
 const normalizeNodeName = (name) => {
@@ -42,6 +43,11 @@ export default function Pods() {
   const POD_COLORS = dark ? POD_COLORS_DARK : POD_COLORS_LIGHT
 
   const COLORS = {
+    // dark theme — add after frontend line:
+  postgres: { bg: '#1a0a0a', border: '#E24B4A', text: '#E24B4A' },
+
+  // light theme — add after frontend line:
+  postgres: { bg: '#fce8e8', border: '#E24B4A', text: '#b83232' },
     bg:       dark ? '#0f0f0f' : '#f0f2f5',
     card:     dark ? '#1a1a1a' : '#ffffff',
     inputBg:  dark ? '#111' : '#eef0f3',

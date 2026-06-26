@@ -1,10 +1,9 @@
-
 # -*- coding: utf-8 -*-
 """
 SS2026 Surveillance System — Complete Backend
 =============================================
 Run:
-    pip install flask flask-cors minio --break-system-packages
+    pip install flask flask-cors minio sqlalchemy psycopg2-binary requests
     python backend.py
 
 Default users:
@@ -17,7 +16,6 @@ import json
 import base64
 import hashlib
 import hmac
-import sqlite3
 import threading
 import io
 import subprocess
@@ -27,6 +25,13 @@ from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
+
+from sqlalchemy import (
+    create_engine, Column, Integer, String, Float, Text,
+    DateTime, func, UniqueConstraint
+)
+from sqlalchemy.orm import declarative_base, sessionmaker, scoped_session
+from sqlalchemy.exc import IntegrityError
 
 try:
     from minio import Minio
@@ -40,9 +45,18 @@ except ImportError:
 # ══════════════════════════════════════════════════════════════
 HOST             = "0.0.0.0"
 PORT             = 8000
-DB_PATH          = "/shared/surveillance.db"
 JWT_SECRET       = "ss2026-secret-change-in-production"
 JWT_EXPIRY_HOURS = 24
+
+# PostgreSQL connection — reads from env vars so the same
+# image works locally and in k3s (just change the env vars)
+DB_HOST     = os.getenv("DB_HOST",     "localhost")
+DB_PORT     = os.getenv("DB_PORT",     "5432")
+DB_NAME     = os.getenv("DB_NAME",     "edgeguard")
+DB_USER     = os.getenv("DB_USER",     "admin")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "admin123")
+
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 MINIO_HOST   = os.getenv("MINIO_HOST", "10.10.10.1:9000")
 MINIO_ACCESS = os.getenv("MINIO_ACCESS", "minioadmin")
@@ -69,7 +83,7 @@ NODES = {
     "pi3-node7":  "10.10.10.27",
     "pi3-node8":  "10.10.10.28",
 }
-BENCHMARK_FILE = "/shared/benchmarks.json"
+BENCHMARK_FILE = os.getenv("BENCHMARK_FILE", "/shared/benchmarks.json")
 
 import math
 
@@ -83,7 +97,7 @@ def read_benchmarks():
             "task_distributor": [],
             "monte_carlo_pi": [],
             "array_sum": [],
-	    "monte_carlo_pi_strong": []
+            "monte_carlo_pi_strong": []
         }
 
 def write_benchmarks(data):
@@ -94,20 +108,15 @@ def write_benchmarks(data):
         print(f"Benchmark write error: {e}")
 
 def calculate_speedup_curves(results):
-    """Given list of {nodes, value} results, compute actual speedup,
-    Amdahl's theoretical curve, and Gustafson's theoretical curve."""
     if not results:
         return {"actual": [], "amdahl": [], "gustafson": [], "parallel_fraction": 0}
-
     sorted_results = sorted(results, key=lambda x: x["nodes"])
     baseline = next((r for r in sorted_results if r["nodes"] == 1), sorted_results[0])
     baseline_value = baseline["value"]
-
     actual = []
     for r in sorted_results:
         speedup = r["value"] / baseline_value if r.get("metric") == "gflops" else baseline_value / r["value"]
         actual.append({"nodes": r["nodes"], "speedup": round(speedup, 3)})
-
     max_n = max(r["nodes"] for r in sorted_results)
     best_speedup_point = max(actual, key=lambda x: x["speedup"])
     N_for_P = best_speedup_point["nodes"]
@@ -117,84 +126,88 @@ def calculate_speedup_curves(results):
         P = max(0, min(1, P))
     else:
         P = 0.75
-
     amdahl = []
     gustafson = []
     for n in range(1, max_n + 1):
-        amdahl_speedup = 1 / ((1 - P) + P / n)
-        gustafson_speedup = n - (1 - P) * (n - 1)
-        amdahl.append({"nodes": n, "speedup": round(amdahl_speedup, 3)})
-        gustafson.append({"nodes": n, "speedup": round(gustafson_speedup, 3)})
+        amdahl.append({"nodes": n, "speedup": round(1 / ((1 - P) + P / n), 3)})
+        gustafson.append({"nodes": n, "speedup": round(n - (1 - P) * (n - 1), 3)})
+    return {"actual": actual, "amdahl": amdahl, "gustafson": gustafson, "parallel_fraction": round(P, 3)}
 
-    return {
-        "actual": actual,
-        "amdahl": amdahl,
-        "gustafson": gustafson,
-        "parallel_fraction": round(P, 3)
-    }
+# ══════════════════════════════════════════════════════════════
+# SQLALCHEMY SETUP
+# ══════════════════════════════════════════════════════════════
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    username      = Column(String(100), unique=True, nullable=False)
+    password_hash = Column(String(256), nullable=False)
+    role          = Column(String(20), nullable=False, default="operator")
+    is_active     = Column(Integer, default=1)
+    last_login    = Column(String(50))
+    created_at    = Column(DateTime, default=datetime.utcnow)
+
+class Event(Base):
+    __tablename__ = "events"
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    type       = Column(String(50), nullable=False)
+    reason     = Column(String(200))
+    confidence = Column(Float)
+    timestamp  = Column(String(50), nullable=False)
+    camera_id  = Column(String(100))
+    image_url  = Column(Text)
+    image_b64  = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+# Create engine with connection pooling — supports multiple
+# backend replicas connecting to the same PostgreSQL instance
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True,   # verifies connections before use
+    echo=False
+)
+SessionFactory = sessionmaker(bind=engine)
+Session = scoped_session(SessionFactory)
+
+def init_db():
+    Base.metadata.create_all(engine)
+    session = Session()
+    try:
+        if session.query(User).count() == 0:
+            session.add_all([
+                User(username="admin",    password_hash=hash_password("admin123"),    role="admin"),
+                User(username="operator", password_hash=hash_password("operator123"), role="operator"),
+            ])
+            session.commit()
+            print("✅ Default users created")
+            print("   admin    / admin123")
+            print("   operator / operator123")
+    except Exception as e:
+        session.rollback()
+        print(f"init_db error: {e}")
+    finally:
+        session.close()
+
+def get_db():
+    if "db" not in g:
+        g.db = Session()
+    return g.db
+
 # ══════════════════════════════════════════════════════════════
 # FLASK APP
 # ══════════════════════════════════════════════════════════════
 app = Flask(__name__)
 CORS(app)
 
-# ══════════════════════════════════════════════════════════════
-# DATABASE
-# ══════════════════════════════════════════════════════════════
-def get_db():
-    if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
-    return g.db
-
 @app.teardown_appcontext
 def close_db(e):
     db = g.pop("db", None)
     if db:
         db.close()
-
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c    = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            username      TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            role          TEXT NOT NULL DEFAULT 'operator',
-            is_active     INTEGER DEFAULT 1,
-            last_login    TEXT,
-            created_at    TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS events (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            type          TEXT NOT NULL,
-            reason        TEXT,
-            confidence    REAL,
-            timestamp     TEXT NOT NULL,
-            camera_id     TEXT,
-            image_url     TEXT,
-            image_b64     TEXT,
-            created_at    TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    c.execute("SELECT COUNT(*) FROM users")
-    if c.fetchone()[0] == 0:
-        users = [
-            ("admin",    hash_password("admin123"),    "admin"),
-            ("operator", hash_password("operator123"), "operator"),
-        ]
-        c.executemany(
-            "INSERT INTO users (username, password_hash, role) VALUES (?,?,?)",
-            users
-        )
-        print("✅ Default users created")
-        print("   admin    / admin123")
-        print("   operator / operator123")
-    conn.commit()
-    conn.close()
+        Session.remove()
 
 # ══════════════════════════════════════════════════════════════
 # PASSWORD + JWT
@@ -312,20 +325,19 @@ def query_prometheus(query):
 # ══════════════════════════════════════════════════════════════
 # AUTH ENDPOINTS
 # ══════════════════════════════════════════════════════════════
-
 @app.route("/api/auth/login", methods=["POST"])
 def login():
     data = request.get_json()
     if not data or not data.get("username") or not data.get("password"):
         return jsonify({"error": "Username and password required"}), 400
     db   = get_db()
-    user = db.execute("SELECT * FROM users WHERE username=? AND is_active=1", (data["username"],)).fetchone()
-    if not user or not verify_password(data["password"], user["password_hash"]):
+    user = db.query(User).filter_by(username=data["username"], is_active=1).first()
+    if not user or not verify_password(data["password"], user.password_hash):
         return jsonify({"error": "Invalid credentials"}), 401
-    db.execute("UPDATE users SET last_login=? WHERE id=?", (datetime.now().isoformat(), user["id"]))
+    user.last_login = datetime.now().isoformat()
     db.commit()
-    token = create_token(user["id"], user["username"], user["role"])
-    return jsonify({"token": token, "role": user["role"], "username": user["username"], "expires_in": JWT_EXPIRY_HOURS * 3600})
+    token = create_token(user.id, user.username, user.role)
+    return jsonify({"token": token, "role": user.role, "username": user.username, "expires_in": JWT_EXPIRY_HOURS * 3600})
 
 
 @app.route("/api/auth/register", methods=["POST"])
@@ -339,11 +351,11 @@ def register():
         return jsonify({"error": "Role must be admin or operator"}), 400
     db = get_db()
     try:
-        db.execute("INSERT INTO users (username, password_hash, role) VALUES (?,?,?)",
-                   (data["username"], hash_password(data["password"]), role))
+        db.add(User(username=data["username"], password_hash=hash_password(data["password"]), role=role))
         db.commit()
         return jsonify({"status": "ok", "message": f"User {data['username']} created"})
-    except sqlite3.IntegrityError:
+    except IntegrityError:
+        db.rollback()
         return jsonify({"error": "Username already exists"}), 409
 
 
@@ -355,7 +367,6 @@ def me():
 # ══════════════════════════════════════════════════════════════
 # EVENTS
 # ══════════════════════════════════════════════════════════════
-
 @app.route("/api/events", methods=["POST"])
 def receive_event():
     data = request.get_json()
@@ -367,16 +378,21 @@ def receive_event():
         ts        = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename  = f"alert_{ts}_{data.get('camera_id','cam')}.jpg"
         image_url = save_to_minio(image_b64, filename)
-    db = get_db()
-    cursor = db.execute(
-        "INSERT INTO events (type, reason, confidence, timestamp, camera_id, image_url, image_b64) VALUES (?,?,?,?,?,?,?)",
-        (data.get("type", "suspicious"), data.get("reason", ""), data.get("confidence", 0.0),
-         data.get("timestamp", datetime.now().isoformat()), data.get("camera_id", "unknown"),
-         image_url, image_b64 if not image_url else "")
+    db    = get_db()
+    event = Event(
+        type       = data.get("type", "suspicious"),
+        reason     = data.get("reason", ""),
+        confidence = data.get("confidence", 0.0),
+        timestamp  = data.get("timestamp", datetime.now().isoformat()),
+        camera_id  = data.get("camera_id", "unknown"),
+        image_url  = image_url,
+        image_b64  = image_b64 if not image_url else ""
     )
+    db.add(event)
     db.commit()
-    print(f"📥 Alert #{cursor.lastrowid} — {data.get('reason')} @ {data.get('confidence', 0):.0%}")
-    return jsonify({"status": "ok", "event_id": cursor.lastrowid})
+    db.refresh(event)
+    print(f"📥 Alert #{event.id} — {event.reason} @ {event.confidence:.0%}")
+    return jsonify({"status": "ok", "event_id": event.id})
 
 
 @app.route("/api/events", methods=["GET"])
@@ -386,42 +402,55 @@ def get_events():
     limit  = int(request.args.get("limit", 20))
     offset = (page - 1) * limit
     db     = get_db()
-    total  = db.execute("SELECT COUNT(*) FROM events").fetchone()[0]
-    rows   = db.execute(
-        "SELECT id, type, reason, confidence, timestamp, camera_id, image_url FROM events ORDER BY id DESC LIMIT ? OFFSET ?",
-        (limit, offset)
-    ).fetchall()
-    return jsonify({"events": [dict(r) for r in rows], "total": total, "page": page, "pages": max(1, -(-total // limit))})
+    total  = db.query(func.count(Event.id)).scalar()
+    rows   = db.query(
+        Event.id, Event.type, Event.reason, Event.confidence,
+        Event.timestamp, Event.camera_id, Event.image_url
+    ).order_by(Event.id.desc()).limit(limit).offset(offset).all()
+    events = [
+        {"id": r.id, "type": r.type, "reason": r.reason,
+         "confidence": r.confidence, "timestamp": r.timestamp,
+         "camera_id": r.camera_id, "image_url": r.image_url}
+        for r in rows
+    ]
+    return jsonify({"events": events, "total": total, "page": page, "pages": max(1, -(-total // limit))})
 
 
 @app.route("/api/events/<int:event_id>", methods=["GET"])
 @require_auth
 def get_event(event_id):
     db  = get_db()
-    row = db.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
+    row = db.query(Event).filter_by(id=event_id).first()
     if not row:
         return jsonify({"error": "Not found"}), 404
-    return jsonify(dict(row))
+    return jsonify({
+        "id": row.id, "type": row.type, "reason": row.reason,
+        "confidence": row.confidence, "timestamp": row.timestamp,
+        "camera_id": row.camera_id, "image_url": row.image_url
+    })
 
 
 @app.route("/api/events/<int:event_id>", methods=["DELETE"])
 @require_admin
 def delete_event(event_id):
     db = get_db()
-    db.execute("DELETE FROM events WHERE id=?", (event_id,))
+    db.query(Event).filter_by(id=event_id).delete()
     db.commit()
     return jsonify({"status": "ok"})
 
 # ══════════════════════════════════════════════════════════════
 # USER MANAGEMENT
 # ══════════════════════════════════════════════════════════════
-
 @app.route("/api/users", methods=["GET"])
 @require_admin
 def get_users():
     db   = get_db()
-    rows = db.execute("SELECT id, username, role, is_active, last_login, created_at FROM users").fetchall()
-    return jsonify({"users": [dict(r) for r in rows]})
+    rows = db.query(User).all()
+    return jsonify({"users": [
+        {"id": u.id, "username": u.username, "role": u.role,
+         "is_active": u.is_active, "last_login": u.last_login,
+         "created_at": str(u.created_at)} for u in rows
+    ]})
 
 
 @app.route("/api/users/<int:user_id>", methods=["PUT"])
@@ -429,9 +458,12 @@ def get_users():
 def update_user(user_id):
     data = request.get_json()
     db   = get_db()
-    if "role"      in data: db.execute("UPDATE users SET role=? WHERE id=?",          (data["role"], user_id))
-    if "is_active" in data: db.execute("UPDATE users SET is_active=? WHERE id=?",     (int(data["is_active"]), user_id))
-    if "password"  in data: db.execute("UPDATE users SET password_hash=? WHERE id=?", (hash_password(data["password"]), user_id))
+    user = db.query(User).filter_by(id=user_id).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    if "role"      in data: user.role          = data["role"]
+    if "is_active" in data: user.is_active     = int(data["is_active"])
+    if "password"  in data: user.password_hash = hash_password(data["password"])
     db.commit()
     return jsonify({"status": "ok"})
 
@@ -442,20 +474,16 @@ def delete_user(user_id):
     if g.current_user["user_id"] == user_id:
         return jsonify({"error": "Cannot delete yourself"}), 400
     db = get_db()
-    db.execute("DELETE FROM users WHERE id=?", (user_id,))
+    db.query(User).filter_by(id=user_id).delete()
     db.commit()
     return jsonify({"status": "ok"})
 
 # ══════════════════════════════════════════════════════════════
 # SYSTEM STATUS
 # ══════════════════════════════════════════════════════════════
-
 def ping_node(ip):
     try:
-        r = requests.get(
-            f"http://{ip}:9100/metrics",
-            timeout=2
-        )
+        r = requests.get(f"http://{ip}:9100/metrics", timeout=2)
         return r.status_code == 200
     except Exception:
         return False
@@ -546,7 +574,7 @@ def update_camera_settings():
 # ══════════════════════════════════════════════════════════════
 # AUTO SCALER
 # ══════════════════════════════════════════════════════════════
-SHARED_STATE_FILE = "/shared/autoscaler.json"
+SHARED_STATE_FILE = os.getenv("SHARED_STATE_FILE", "/shared/autoscaler.json")
 autoscaler_lock = threading.Lock()
 
 def read_autoscaler_state():
@@ -597,7 +625,6 @@ def get_cluster_cpu():
         return 0
 
 
-
 @app.route("/api/autoscaler/status", methods=["GET"])
 @require_auth
 def autoscaler_status():
@@ -627,6 +654,7 @@ def autoscaler_stop():
     except Exception:
         pass
     return jsonify({"status": "ok", "message": "Stress test stopped"})
+
 @app.route("/api/autoscaler/clear", methods=["POST"])
 @require_admin
 def autoscaler_clear():
@@ -657,7 +685,6 @@ def autoscaler_force():
             state["pi4_status"] = "joining"
             write_autoscaler_state(state)
         return jsonify({"status": "ok", "message": "Pi4 joining cluster"})
-
     elif action == "leave":
         subprocess.Popen([
             "bash", "-c",
@@ -674,18 +701,16 @@ def autoscaler_force():
             state["pi4_status"] = "leaving"
             write_autoscaler_state(state)
         return jsonify({"status": "ok", "message": "Pi4 leaving cluster"})
-
     return jsonify({"error": "Invalid action"}), 400
 
 # ══════════════════════════════════════════════════════════════
 # HEALTH CHECK
 # ══════════════════════════════════════════════════════════════
-
 @app.route("/api/health", methods=["GET"])
 def health():
     db    = get_db()
-    total = db.execute("SELECT COUNT(*) FROM events").fetchone()[0]
-    users = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    total = db.query(func.count(Event.id)).scalar()
+    users = db.query(func.count(User.id)).scalar()
     return jsonify({"status": "ok", "service": "ss2026-backend", "total_events": total,
                     "total_users": users, "minio": "connected" if minio_client else "offline",
                     "timestamp": datetime.now().isoformat()})
@@ -697,43 +722,28 @@ def cluster_pods():
     try:
         import urllib3
         urllib3.disable_warnings()
-        
-        # Read k3s service account token
         with open("/var/run/secrets/kubernetes.io/serviceaccount/token") as f:
             token = f.read().strip()
-        
-        # Call Kubernetes API directly
         r = requests.get(
             "https://10.10.10.1:6443/api/v1/namespaces/default/pods",
             headers={"Authorization": f"Bearer {token}"},
-            verify=False,
-            timeout=5
+            verify=False, timeout=5
         )
-        
         data = r.json()
         pods = []
-        
         for item in data.get("items", []):
             name   = item["metadata"]["name"]
             status = item["status"].get("phase", "Unknown")
             node   = item["spec"].get("nodeName", "unknown")
-            
             if 'backend'  in name: pod_type = 'backend'
             elif 'minio'  in name: pod_type = 'minio'
             elif 'frontend' in name: pod_type = 'frontend'
+            elif 'postgres' in name: pod_type = 'postgres'
             else: continue
-            
-            pods.append({
-                "name":   name,
-                "node":   node,
-                "status": status,
-                "type":   pod_type
-            })
-        
+            pods.append({"name": name, "node": node, "status": status, "type": pod_type})
         return jsonify({"pods": pods})
     except Exception as e:
         return jsonify({"pods": [], "error": str(e)})
-
 
 
 @app.route("/api/povray-renders", methods=["GET"])
@@ -766,63 +776,39 @@ def get_povray_renders():
 def get_benchmarks():
     data = read_benchmarks()
     return jsonify({
-        "hpl": {
-            "results": data.get("hpl", []),
-            "curves": calculate_speedup_curves(data.get("hpl", []))
-        },
-        "task_distributor": {
-            "results": data.get("task_distributor", []),
-            "curves": calculate_speedup_curves(data.get("task_distributor", []))
-        },
-        "monte_carlo_pi": {
-            "results": data.get("monte_carlo_pi", []),
-            "curves": calculate_speedup_curves(data.get("monte_carlo_pi", []))
-        },
-        "array_sum": {
-            "results": data.get("array_sum", []),
-            "curves": calculate_speedup_curves(data.get("array_sum", []))
-        },
-        "monte_carlo_pi_strong": {
-            "results": data.get("monte_carlo_pi_strong", []),
-            "curves": calculate_speedup_curves(data.get("monte_carlo_pi_strong", []))
-        }
+        "hpl":                 {"results": data.get("hpl", []),                 "curves": calculate_speedup_curves(data.get("hpl", []))},
+        "task_distributor":    {"results": data.get("task_distributor", []),    "curves": calculate_speedup_curves(data.get("task_distributor", []))},
+        "monte_carlo_pi":      {"results": data.get("monte_carlo_pi", []),      "curves": calculate_speedup_curves(data.get("monte_carlo_pi", []))},
+        "array_sum":           {"results": data.get("array_sum", []),           "curves": calculate_speedup_curves(data.get("array_sum", []))},
+        "monte_carlo_pi_strong": {"results": data.get("monte_carlo_pi_strong", []), "curves": calculate_speedup_curves(data.get("monte_carlo_pi_strong", []))}
     })
+
 @app.route("/api/benchmarks/record", methods=["POST"])
 @require_admin
 def record_benchmark():
     body = request.json
-    benchmark_type = body.get("type")  # "hpl" or "task_distributor"
-    nodes = body.get("nodes")
-    value = body.get("value")
-    metric = body.get("metric")  # "gflops" or "seconds"
-
+    benchmark_type = body.get("type")
+    nodes  = body.get("nodes")
+    value  = body.get("value")
+    metric = body.get("metric")
     if benchmark_type not in ["hpl", "task_distributor", "monte_carlo_pi", "array_sum", "monte_carlo_pi_strong"]:
         return jsonify({"error": "Invalid benchmark type"}), 400
-
     data = read_benchmarks()
     if benchmark_type not in data:
         data[benchmark_type] = []
-    data[benchmark_type] = [
-        r for r in data[benchmark_type] if r["nodes"] != nodes
-    ]
-    data[benchmark_type].append({
-        "nodes": nodes,
-        "value": value,
-        "metric": metric,
-        "timestamp": datetime.now().isoformat()
-    })
+    data[benchmark_type] = [r for r in data[benchmark_type] if r["nodes"] != nodes]
+    data[benchmark_type].append({"nodes": nodes, "value": value, "metric": metric, "timestamp": datetime.now().isoformat()})
     write_benchmarks(data)
     return jsonify({"status": "ok"})
-
 
 # ══════════════════════════════════════════════════════════════
 # START
 # ══════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     print("=" * 55)
-    print("  SS2026 Surveillance Backend")
+    print("  SS2026 Surveillance Backend (PostgreSQL)")
     print(f"  Port:     {PORT}")
-    print(f"  Database: {DB_PATH}")
+    print(f"  Database: {DATABASE_URL}")
     print(f"  MinIO:    {MINIO_HOST}")
     print("=" * 55)
     init_db()
