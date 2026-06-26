@@ -1,0 +1,17 @@
+[Unit]
+Description=EdgeGuard Auto Scaler (auto_scale.sh)
+After=network.target k3s.service det.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin
+ExecStart=/bin/bash /home/admin/auto_scale.sh
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/admin/autoscale.log
+StandardError=append:/home/admin/autoscale.log
+
+[Install]
+WantedBy=multi-user.target
