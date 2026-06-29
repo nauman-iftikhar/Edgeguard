@@ -59,6 +59,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "admin123")
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 MINIO_HOST   = os.getenv("MINIO_HOST", "10.10.10.1:9000")
+MINIO_PUBLIC = os.getenv("MINIO_PUBLIC", "10.100.47.201:30900")
 MINIO_ACCESS = os.getenv("MINIO_ACCESS", "minioadmin")
 MINIO_SECRET = os.getenv("MINIO_SECRET", "minioadmin")
 MINIO_BUCKET = "surveillance-snapshots"
@@ -306,7 +307,7 @@ def save_to_minio(image_b64, filename):
         image_bytes = base64.b64decode(image_b64)
         minio_client.put_object(MINIO_BUCKET, filename, io.BytesIO(image_bytes),
                                 length=len(image_bytes), content_type="image/jpeg")
-        return f"http://{MINIO_HOST}/{MINIO_BUCKET}/{filename}"
+        return f"http://{MINIO_PUBLIC}/{MINIO_BUCKET}/{filename}"
     except Exception as e:
         print(f"⚠️  MinIO upload failed: {e}")
         return None
