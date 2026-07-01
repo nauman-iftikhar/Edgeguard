@@ -1,355 +1,130 @@
-# Infrastructure Setup
+# Cluster Setup
 
 [← Back to Home](index.md)
 
-This page documents the complete infrastructure setup for the EdgeGuard cluster — a heterogeneous 10-node Raspberry Pi system running k3s Kubernetes with PXE network boot.
+EdgeGuard runs on a heterogeneous cluster of 10 Raspberry Pi single-board computers connected over a dedicated internal network. This page describes the hardware decisions, network design, and how the cluster was assembled.
 
 ---
 
-## Hardware Overview
+## Why Heterogeneous?
 
-| Node | Hostname | IP | Model | Role |
-|------|----------|----|-------|------|
-| Pi 5 | master-node | 10.10.10.1 | Raspberry Pi 5 + Hailo AI HAT+ | Master, DHCP/TFTP/NFS, inference |
-| Pi 4 | sensor-node | 10.10.10.40 | Raspberry Pi 4 + AI Camera Module | Camera stream (ZMQ) |
-| Pi 3 #1 | pi3-01 | 10.10.10.21 | Raspberry Pi 3B+ | k3s worker (diskless PXE) |
-| Pi 3 #2 | pi3-02 | 10.10.10.22 | Raspberry Pi 3B+ | k3s worker (diskless PXE) |
-| Pi 3 #3 | pi3-03 | 10.10.10.23 | Raspberry Pi 3B+ | k3s worker (diskless PXE) |
-| Pi 3 #4 | pi3-04 | 10.10.10.24 | Raspberry Pi 3B+ | k3s worker (diskless PXE) |
-| Pi 3 #5 | pi3-05 | 10.10.10.25 | Raspberry Pi 3B+ | k3s worker (diskless PXE) |
-| Pi 3 #6 | pi3-06 | 10.10.10.26 | Raspberry Pi 3B+ | k3s worker (diskless PXE) |
-| Pi 3 #7 | pi3-07 | 10.10.10.27 | Raspberry Pi 3B+ | k3s worker (diskless PXE) |
-| Pi 3 #8 | pi3-08 | 10.10.10.28 | Raspberry Pi 3B+ | k3s worker (diskless PXE) |
+Most university clusters use identical hardware throughout. We deliberately chose a heterogeneous approach — mixing Raspberry Pi 5, Pi 4, and Pi 3 nodes — to reflect real-world edge computing deployments where different hardware serves different purposes.
 
-All nodes are connected via a dedicated 10.10.10.0/24 internal network through a managed switch. Pi 5 also connects to the external network via WiFi (wlan0, 10.100.47.201) for remote SSH access.
+Each node type has a specific, justified role:
+
+| Node | Model | Why This Hardware |
+|------|-------|-------------------|
+| Pi 5 | Raspberry Pi 5 + Hailo AI HAT+ | Most powerful SBC in the Pi family; needed for real-time AI inference at production frame rates. The Hailo AI HAT+ adds a dedicated 26 TOPS neural processing unit. |
+| Pi 4 | Raspberry Pi 4 + AI Camera Module | Dedicated camera node with hardware camera interface. Kept separate from compute to avoid inference load affecting stream quality. |
+| Pi 3 × 8 | Raspberry Pi 3B+ | Low-cost, low-power compute workers. Homogeneous among themselves — ideal for benchmarking parallel workloads on identical hardware. |
 
 ---
 
-## Network Architecture
+## The Pi3-06 Design Decision
+
+One deliberate design choice worth explaining: **pi3-06 boots from a local SD card** rather than PXE over the network like the other seven Pi 3 nodes.
+
+This was intentional. We wanted to answer a real question: *does a node booting from local SD card perform differently from an identical node booting disklessly over NFS in the same cluster?*
+
+`[IMAGE: photo of the physical cluster showing the switch and nodes]`
+
+Having one SD-card node alongside seven PXE nodes gave us a natural comparison point throughout all our benchmarking. In practice, pi3-06 showed consistently comparable performance to its PXE-booting peers in all compute benchmarks, confirming that the NFS root filesystem approach introduces no significant compute overhead — the network is fast enough over the dedicated 10.10.10.0/24 switch that I/O latency is not a bottleneck for CPU-bound workloads.
+
+---
+
+## Network Design
+
+All nodes communicate over a dedicated internal network (`10.10.10.0/24`) via a managed switch. Pi 5 also connects to the external WiFi network for remote access.
 
 ```
-Internet / External Network (10.100.47.0/24)
+External WiFi (10.100.47.0/24)
         │
-        │ wlan0 (10.100.47.201)
-   ┌────┴────────────────────────────────────┐
-   │          Raspberry Pi 5 (master-node)   │
-   │  eth0 (10.10.10.1)                      │
-   │  ├── DHCP server (dnsmasq)              │
-   │  ├── TFTP server (dnsmasq)              │
-   │  ├── NFS server (exports)               │
-   │  ├── k3s control plane                  │
-   │  └── Local container registry (:5000)   │
-   └────┬────────────────────────────────────┘
-        │ eth0
-        │ 10.10.10.0/24 (internal switch)
-        ├── 10.10.10.21  pi3-01
-        ├── 10.10.10.22  pi3-02
-        ├── 10.10.10.23  pi3-03
-        ├── 10.10.10.24  pi3-04
-        ├── 10.10.10.25  pi3-05
-        ├── 10.10.10.26  pi3-06
-        ├── 10.10.10.27  pi3-07
-        ├── 10.10.10.28  pi3-08
-        └── 10.10.10.40  sensor-node (Pi 4)
+        │ wlan0 — 10.100.47.201 (remote SSH access)
+   ┌────┴──────────────────────────────┐
+   │       Pi 5 — master-node          │
+   │       eth0 — 10.10.10.1           │
+   │                                   │
+   │  Serves to internal network:      │
+   │  • DHCP (static IP by MAC)        │
+   │  • TFTP (PXE boot files)          │
+   │  • NFS (Pi 3 root filesystems)    │
+   └────┬──────────────────────────────┘
+        │
+   [Managed Switch — 10.10.10.0/24]
+        │
+        ├── 10.10.10.21  pi3-01  (PXE diskless)
+        ├── 10.10.10.22  pi3-02  (PXE diskless)
+        ├── 10.10.10.23  pi3-03  (PXE diskless)
+        ├── 10.10.10.24  pi3-04  (PXE diskless)
+        ├── 10.10.10.25  pi3-05  (PXE diskless)
+        ├── 10.10.10.26  pi3-06  (SD card boot)
+        ├── 10.10.10.27  pi3-07  (PXE diskless)
+        ├── 10.10.10.28  pi3-08  (PXE diskless)
+        └── 10.10.10.40  sensor-node / Pi 4
 ```
 
 ---
 
-## Step 1 — Pi 5 Base Setup
+## PXE Network Boot
 
-Install Raspberry Pi OS (64-bit) on the Pi 5 SD card. Enable SSH and configure the static IP on `eth0`:
+Seven of the eight Pi 3 nodes boot entirely over the network — no SD cards, no local storage of any kind. On power-on, each node:
 
-```bash
-# /etc/dhcpcd.conf
-interface eth0
-static ip_address=10.10.10.1/24
-```
+1. Broadcasts a DHCP request over the network
+2. Pi 5's dnsmasq DHCP server responds with a static IP (assigned by MAC address) and points the node to Pi 5's TFTP server for boot files
+3. The node loads its boot firmware and kernel from TFTP
+4. The kernel mounts its root filesystem from Pi 5's NFS server
+5. The node boots into Raspberry Pi OS running entirely in RAM backed by NFS
 
-Install required packages:
+Each Pi 3 has its own isolated NFS root at `/nfs/clients/pi3-XX/` on Pi 5. A shared NFS volume at `/nfs/shared/` is also mounted by all nodes for MPI benchmarking — compiled binaries and hostfiles placed here are immediately accessible to every node without separate copies.
 
-```bash
-sudo apt update && sudo apt install -y \
-  dnsmasq nfs-kernel-server \
-  docker.io git curl wget
-```
+`[IMAGE: screenshot of kubectl get nodes showing all nodes Ready]`
 
----
+### A Challenge We Discovered
 
-## Step 2 — PXE Boot Setup (Diskless Pi 3 Nodes)
+After the first full cluster reboot, we found that `dnsmasq` was starting before `eth0` was fully initialized, causing it to fail with "unknown interface eth0". This left all Pi 3 nodes without DHCP leases and unable to PXE boot.
 
-The Pi 3 nodes boot entirely over the network — no SD cards required. Pi 5 serves DHCP, TFTP (boot files), and NFS (root filesystem) for all 8 Pi 3 workers.
-
-### 2.1 — Prepare NFS Root Filesystems
-
-Create a separate NFS root for each Pi 3 node:
+The fix was a systemd drop-in that forces dnsmasq to wait for the network to be fully online:
 
 ```bash
-sudo mkdir -p /nfs/clients/pi3-01
-sudo mkdir -p /nfs/clients/pi3-02
-# ... repeat for pi3-03 through pi3-08
-
-# Copy a base Raspberry Pi OS image into each client directory
-# (debootstrap or rsync from a reference Pi 3 SD card)
-sudo rsync -avx /media/sdcard/ /nfs/clients/pi3-01/
-```
-
-Configure NFS exports (`/etc/exports`):
-
-```
-/nfs/clients/pi3-01  10.10.10.21(rw,sync,no_subtree_check,no_root_squash)
-/nfs/clients/pi3-02  10.10.10.22(rw,sync,no_subtree_check,no_root_squash)
-/nfs/clients/pi3-03  10.10.10.23(rw,sync,no_subtree_check,no_root_squash)
-/nfs/clients/pi3-04  10.10.10.24(rw,sync,no_subtree_check,no_root_squash)
-/nfs/clients/pi3-05  10.10.10.25(rw,sync,no_subtree_check,no_root_squash)
-/nfs/clients/pi3-06  10.10.10.26(rw,sync,no_subtree_check,no_root_squash)
-/nfs/clients/pi3-07  10.10.10.27(rw,sync,no_subtree_check,no_root_squash)
-/nfs/clients/pi3-08  10.10.10.28(rw,sync,no_subtree_check,no_root_squash)
-/nfs/shared           10.10.10.0/24(rw,sync,no_subtree_check,no_root_squash)
-sudo exportfs -ra
-sudo systemctl restart nfs-kernel-server
-```
-
-### 2.2 — Configure TFTP Boot Files
-
-Each Pi 3 needs its boot firmware served via TFTP. The Pi 3's serial number determines which boot folder it uses:
-
-```bash
-sudo mkdir -p /tftpboot
-# Copy boot files for each Pi 3 (identified by their serial number folder)
-# e.g. /tftpboot/66745be3/ for pi3-01
-```
-
-### 2.3 — Configure dnsmasq (DHCP + TFTP)
-
-`/etc/dnsmasq.conf`:
-
-```ini
-interface=eth0
-bind-interfaces
-
-# DHCP — assign static IPs by MAC address
-dhcp-range=10.10.10.20,10.10.10.100,12h
-dhcp-host=<MAC_pi3-01>,pi3-01,10.10.10.21
-dhcp-host=<MAC_pi3-02>,pi3-02,10.10.10.22
-dhcp-host=<MAC_pi3-03>,pi3-03,10.10.10.23
-dhcp-host=<MAC_pi3-04>,pi3-04,10.10.10.24
-dhcp-host=<MAC_pi3-05>,pi3-05,10.10.10.25
-dhcp-host=<MAC_pi3-06>,pi3-06,10.10.10.26
-dhcp-host=<MAC_pi3-07>,pi3-07,10.10.10.27
-dhcp-host=<MAC_pi3-08>,pi3-08,10.10.10.28
-
-# TFTP — serve boot files
-enable-tftp
-tftp-root=/tftpboot
-pxe-service=0,"Raspberry Pi Boot"
-```
-
-> **Important:** dnsmasq must start after eth0 is fully up. Add a systemd drop-in to ensure this:
-
-```bash
-sudo mkdir -p /etc/systemd/system/dnsmasq.service.d
-sudo tee /etc/systemd/system/dnsmasq.service.d/wait-for-eth0.conf << EOF
+# /etc/systemd/system/dnsmasq.service.d/wait-for-eth0.conf
 [Unit]
 After=network-online.target
 Wants=network-online.target
-EOF
-sudo systemctl daemon-reload
 ```
 
-### 2.4 — Configure Pi 3 NFS Root
-
-In each Pi 3's NFS root, edit `/etc/fstab` to mount the root filesystem over NFS:
-
-```
-10.10.10.1:/nfs/clients/pi3-01  /  nfs  defaults,vers=3  0  0
-10.10.10.1:/tftpboot/<serial>   /boot/firmware  nfs  defaults,vers=3  0  0
-```
-
-Set `cmdline.txt` in the TFTP boot folder to point to the NFS root:
-
-```
-console=serial0,115200 console=tty1 root=/dev/nfs nfsroot=10.10.10.1:/nfs/clients/pi3-01,vers=3 rw ip=dhcp rootwait
-```
+This is a good example of the kind of infrastructure problem that only surfaces after the first reboot — not during initial setup.
 
 ---
 
-## Step 3 — k3s Kubernetes Cluster
+## Static IP Assignment
 
-### 3.1 — Install k3s on Pi 5 (Master)
-
-```bash
-curl -sfL https://get.k3s.io | sh -
-sudo kubectl get nodes
-```
-
-Get the cluster token for worker nodes:
-
-```bash
-sudo cat /var/lib/rancher/k3s/server/node-token
-```
-
-### 3.2 — Install k3s on Pi 3 Worker Nodes
-
-Run on each Pi 3 node (replace TOKEN and SERVER_IP):
-
-```bash
-curl -sfL https://get.k3s.io | \
-  K3S_URL=https://10.10.10.1:6443 \
-  K3S_TOKEN=<token> \
-  sh -
-```
-
-### 3.3 — Verify Cluster
-
-```bash
-kubectl get nodes -o wide
-```
-
-Expected output:
-```
-NAME          STATUS   ROLES           AGE   VERSION
-master-node   Ready    control-plane   ...   v1.35.5+k3s1
-pi3-01        Ready    <none>          ...   v1.35.5+k3s1
-pi3-02        Ready    <none>          ...   v1.35.5+k3s1
-...
-pi3-08        Ready    <none>          ...   v1.35.5+k3s1
-sensor-node   Ready    <none>          ...   v1.35.5+k3s1
-```
-
-### 3.4 — Local Container Registry
-
-Pi 5 runs a local Docker registry so k3s can pull images without internet access:
-
-```bash
-docker run -d -p 5000:5000 --restart=always --name registry registry:2
-```
-
-Configure k3s to trust the insecure registry (`/etc/rancher/k3s/registries.yaml`):
-
-```yaml
-mirrors:
-  "10.10.10.1:5000":
-    endpoint:
-      - "http://10.10.10.1:5000"
-```
+Pi 5's dnsmasq assigns static IPs to each node based on its MAC address, ensuring every node always gets the same IP regardless of boot order. This is critical for MPI jobs (which reference nodes by hostname) and for k3s (which needs stable node identities).
 
 ---
 
-## Step 4 — Shared NFS Volume for k3s
+## Hostname Resolution
 
-A shared NFS volume (`/nfs/shared`) is used by all k3s pods for benchmark data and autoscaler state:
+An early problem: `pi3-01` through `pi3-08` hostnames were resolving via mDNS, which was unreliable — MPI jobs would occasionally fail because hostname resolution timed out mid-job.
 
-```bash
-# On Pi 5
-sudo mkdir -p /nfs/shared
-sudo chmod 777 /nfs/shared
-```
-
-Apply the shared PersistentVolume:
-
-```bash
-kubectl apply -f k8s/shared-pv.yaml
-```
+The fix was adding static entries to both `/etc/hosts` and the cloud-init template on Pi 5. Pi 5 uses cloud-init with `manage_etc_hosts: True`, which overwrites `/etc/hosts` on every reboot. We had to edit the cloud-init template (`/etc/cloud/templates/hosts.debian.tmpl`) directly to make these entries survive reboots — something that cost us several hours to diagnose the first time.
 
 ---
 
-## Step 5 — Systemd Services on Pi 5
+## Boot Sequence After Reboot
 
-Three services run persistently on Pi 5 outside of k3s:
-
-```bash
-# Detection service (AI inference + camera stream)
-sudo cp services/det.service /etc/systemd/system/
-sudo systemctl enable --now det.service
-
-# Stress test server (for auto-scaler testing)
-sudo cp services/stress-server.service /etc/systemd/system/
-sudo systemctl enable --now stress-server.service
-
-# Auto-scaler (monitors cluster CPU, controls Pi 4 join/leave)
-sudo cp services/autoscaler.service /etc/systemd/system/
-sudo systemctl enable --now autoscaler.service
+```
+T+0s    Pi 5 boots, eth0 comes up
+T+15s   dnsmasq starts (DHCP + TFTP)
+T+20s   Pi 3 nodes power on, broadcast DHCP requests
+T+25s   Pi 3 nodes receive IPs, begin PXE boot
+T+60s   Pi 3 nodes mount NFS root, booting OS
+T+90s   Pi 3 nodes fully booted
+T+120s  All nodes Ready in cluster
+T+180s  All pods rescheduled and running
 ```
 
-On Pi 4 (sensor-node):
-
-```bash
-# Camera stream service
-sudo cp services/main-stream.service /etc/systemd/system/
-sudo systemctl enable --now main-stream.service
-```
+Total cold-start to fully operational: approximately 3-5 minutes.
 
 ---
 
-## Step 6 — /etc/hosts Configuration
-
-Add Pi 3 hostnames to Pi 5's `/etc/hosts` for reliable SSH and MPI hostname resolution. Edit the cloud-init template so entries survive reboots:
-
-```bash
-sudo tee -a /etc/hosts /etc/cloud/templates/hosts.debian.tmpl << EOF
-10.10.10.21  pi3-01
-10.10.10.22  pi3-02
-10.10.10.23  pi3-03
-10.10.10.24  pi3-04
-10.10.10.25  pi3-05
-10.10.10.26  pi3-06
-10.10.10.27  pi3-07
-10.10.10.28  pi3-08
-EOF
-```
-
-> **Note:** Pi 5 uses cloud-init with `manage_etc_hosts: True`. Editing `/etc/hosts` directly will be overwritten on reboot. Always edit both files as shown above.
-
----
-
-## Boot Sequence (After Every Reboot)
-
-When Pi 5 reboots, the following sequence occurs automatically:
-
-```
-1. eth0 comes up (10.10.10.1)
-2. dnsmasq starts (DHCP + TFTP) — waits for network-online.target
-3. Pi 3 nodes power on → receive DHCP lease → PXE boot via TFTP
-4. Pi 3 nodes mount their NFS root filesystem from Pi 5
-5. Pi 3 nodes start k3s agent → join cluster
-6. k3s reschedules pods onto available nodes
-7. det.service, stress-server.service, autoscaler.service start on Pi 5
-8. main-stream.service starts on Pi 4
-```
-
-Total time from power-on to fully operational cluster: approximately 3–5 minutes.
-
----
-
-## Troubleshooting
-
-**Pi 3 nodes not booting after reboot:**
-```bash
-# Check if dnsmasq is running
-sudo systemctl status dnsmasq
-
-# If failed, start manually (eth0 timing issue)
-sudo systemctl start dnsmasq
-```
-
-**Nodes showing NotReady in k3s:**
-```bash
-# Wait 2-3 minutes for PXE boot to complete
-kubectl get nodes -w
-
-# Check a specific node's k3s agent
-ssh admin@10.10.10.21 "sudo systemctl status k3s-agent"
-```
-
-**MPI hostname resolution failures:**
-```bash
-# Re-add /etc/hosts entries (lost after reboot)
-sudo tee -a /etc/hosts << EOF
-10.10.10.21  pi3-01
-...
-EOF
-```
-
----
-
-[Next: Benchmarking Results →](benchmarks.md)
+[Next: AI Inference Pipeline →](inference.md)

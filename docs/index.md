@@ -2,92 +2,116 @@
 
 **Frankfurt University of Applied Sciences | Cloud Computing SS2026 | Prof. Dr. Christian Baun**
 
-EdgeGuard is a production-grade edge computing surveillance system built on a heterogeneous 10-node Raspberry Pi cluster. It performs real-time AI inference for suspicious behavior detection, deployed entirely on-premise with no cloud dependency.
+EdgeGuard is a production-grade edge computing surveillance system built on a heterogeneous 10-node Raspberry Pi cluster. It performs real-time AI inference for suspicious behavior detection at 20 FPS with 14–17ms latency, deployed entirely on-premise with no cloud dependency.
+
+`[IMAGE: photo of the full physical cluster]`
 
 ---
 
-## 🔗 Quick Links
+## Quick Links
 
 - **Live Dashboard**: [http://10.100.47.201:30080](http://10.100.47.201:30080) *(accessible on local network)*
 - **GitHub Repository**: [github.com/nauman-iftikhar/Edgeguard](https://github.com/nauman-iftikhar/Edgeguard)
+- **Grafana Monitoring**: [http://10.100.47.201:30001](http://10.100.47.201:30001)
 
 ---
 
-## 🏗️ System Architecture
+## Documentation
+
+| Page | Description |
+|------|-------------|
+| [Cluster Setup](setup.md) | Heterogeneous hardware design, PXE diskless boot, network architecture |
+| [AI Inference Pipeline](inference.md) | ZMQ camera stream, YOLOv8n training, Hailo HEF conversion |
+| [Deployment](deployment.md) | Docker, k3s, PostgreSQL StatefulSet, MinIO object storage |
+| [Monitoring](monitoring.md) | Prometheus, Grafana, node health, service status |
+| [Auto Scaler](autoscaler.md) | Dynamic Pi 4 node join/leave based on real-time cluster CPU |
+| [Benchmarks](benchmarks.md) | HPL, MPI Monte Carlo Pi (weak + strong scaling), Task Distributor |
+| [API Reference](api.md) | Complete REST API endpoint reference |
+
+---
+
+## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   EdgeGuard Cluster                  │
-│                                                     │
-│  Pi 5 (Master)          Pi 4 (Sensor)               │
-│  ├── k3s control plane  └── AI Camera Module        │
-│  ├── Hailo AI HAT+           1080p @ 20 FPS         │
-│  ├── det.py (inference)                             │
-│  ├── PostgreSQL (3 replicas)                        │
-│  ├── MinIO (object storage)                         │
-│  ├── Prometheus + Grafana                           │
-│  └── NFS + DHCP + TFTP (PXE boot)                  │
-│                                                     │
-│  Pi 3 × 8 (Workers)                                │
-│  └── PXE diskless boot over NFS                    │
-│      k3s agents                                     │
-│      Backend API replicas                           │
-│      Frontend replicas                              │
-└─────────────────────────────────────────────────────┘
+External Network (WiFi)
+        │
+        │ 10.100.47.201 (remote access)
+   ┌────┴────────────────────────────────────────┐
+   │            Pi 5 — master-node               │
+   │                                             │
+   │  k3s control plane    Hailo AI HAT+         │
+   │  PostgreSQL ×3        det.py (inference)    │
+   │  MinIO storage        Prometheus + Grafana  │
+   │  Backend API ×2       Auto Scaler           │
+   │  Frontend ×2          DHCP + TFTP + NFS     │
+   └────┬────────────────────────────────────────┘
+        │ 10.10.10.0/24 (dedicated switch)
+        │
+        ├── Pi 4 (sensor-node, 10.10.10.40)
+        │   └── AI Camera → ZMQ stream → Pi 5
+        │
+        └── Pi 3 × 8 (pi3-01 to pi3-08)
+            ├── PXE diskless boot over NFS
+            ├── k3s worker nodes
+            └── Backend + Frontend pod replicas
 ```
 
 ---
 
-## 📋 Tasks
-
-| Task | Description | Status | Lead |
-|------|-------------|--------|------|
-| 1 | [Infrastructure Setup](setup.md) | ✅ Complete | Nauman Iftikhar |
-| 2 | [HPL Benchmark](benchmarks.md#hpl) | ✅ Complete | Nauman Iftikhar, Abdur Rahim |
-| 3 | [MPI & Scaling Laws](benchmarks.md#mpi) | ✅ Complete | Negar Mohammadi, Ikbela Halili |
-| 4 | [Task Distributor](benchmarks.md#task-distributor) | ✅ Complete | Abdur Rahim Nishad, Krish |
-| 5 | [Monitoring](monitoring.md) | ✅ Complete | Muhammad Abdullah Nagori |
-| 6 | [Model Training](inference.md) | ✅ Complete | Nauman Iftikhar |
-| 7 | [Backend Development](api.md) | ✅ Complete | Muhammad Saleem, Muhammad Furqan Shafique |
-| 8 | [Frontend Development](frontend.md) | ✅ Complete | Muhammad Saleem, Muhammad Furqan Shafique |
-| 9 | Telegram Bot | ✅ Complete | Negar Mohammadi, Ikbela Halili, Krish |
-| 10 | Documentation & Presentation | 🔄 In Progress | All team members |
-
----
-
-## 👥 Team
-
-| Name | Student ID | Email |
-|------|-----------|-------|
-| Muhammad Furqan Shafique | 1521612 | muhammad.shafique@stud.fra-uas.de |
-| Abdur Rahim Nishad | 1548620 | abdur.nishad@stud.fra-uas.de |
-| Ikbela Halili | 1569032 | ikbela.halili@stud.fra-uas.de |
-| Nauman Iftikhar | 1542251 | nauman.iftikhar@stud.fra-uas.de |
-| Negar Mohammadi | 1542459 | negar.mohammadi@stud.fra-uas.de |
-| Muhammad Abdullah Nagori | 1523450 | muhammad.nagori@stud.fra-uas.de |
-| Muhammad Saleem | 1542590 | muhammad.saleem2@stud.fra-uas.de |
-| Krish | TBD | TBD |
-
----
-
-## 🛠️ Hardware
+## Hardware
 
 | Node | Model | Role | Count |
 |------|-------|------|-------|
-| Pi 5 (master-node) | Raspberry Pi 5 + Hailo AI HAT+ | Master, inference, storage | 1 |
-| Pi 4 (sensor-node) | Raspberry Pi 4 + AI Camera | Camera stream | 1 |
-| Pi 3 (pi3-01..08) | Raspberry Pi 3B+ | Compute workers (PXE diskless) | 8 |
+| Pi 5 | Raspberry Pi 5 + Hailo AI HAT+ | Master, inference, storage, monitoring | 1 |
+| Pi 4 | Raspberry Pi 4 + AI Camera Module | Camera stream publisher | 1 |
+| Pi 3 | Raspberry Pi 3B+ (7× PXE, 1× SD) | Compute workers | 8 |
 
 ---
 
-## 🚀 Key Technical Highlights
+## Key Results
 
-- **PXE diskless boot** — all 8 Pi 3 nodes boot entirely over the network via TFTP/NFS, no SD cards required
-- **k3s Kubernetes** — production-grade container orchestration across all nodes with pod anti-affinity for HA
-- **Hailo AI HAT+** — YOLOv8n running on dedicated NPU at 14–17ms inference latency, 20 FPS at 1080p
-- **PostgreSQL HA** — 3-replica StatefulSet replacing SQLite, with SQLAlchemy ORM and connection pooling
-- **Near-ideal MPI scaling** — Monte Carlo Pi strong scaling: 1.96× at N=2, 3.95× at N=4, 7.37× at N=8
+| Metric | Result |
+|--------|--------|
+| AI inference latency | 14–17ms per frame on Hailo NPU |
+| Stream frame rate | 20 FPS @ 1080p |
+| MPI strong scaling (N=8) | 7.37× speedup (near-ideal) |
+| MPI weak scaling | Flat time across N=1–9 (near-ideal) |
+| Task Distributor best | 1.55× at N=4 |
+| HPL (best) | 3.563 GFLOPS at N=8 |
+| Auto-scaler response | Pi 4 joins cluster within ~90 seconds |
 
 ---
 
-*Built with ❤️ at Frankfurt University of Applied Sciences, SS2026*
+## Team
+
+| Name | Role |
+|------|------|
+| Nauman Iftikhar | Infrastructure, AI inference, backend, auto-scaler, documentation |
+| Abdur Rahim Nishad | HPL benchmarking, Task Distributor |
+| Negar Mohammadi | MPI examples, Telegram bot |
+| Ikbela Halili | MPI examples, Telegram bot |
+| Muhammad Abdullah Nagori | Monitoring (Prometheus + Grafana) |
+| Muhammad Saleem | Backend API, frontend |
+| Muhammad Furqan Shafique | Backend API, frontend |
+| Krish | Task Distributor, MPI |
+
+---
+
+## Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 1 | Heterogeneous cluster setup, PXE boot | ✅ Complete |
+| 2 | HPL benchmark | ✅ Complete |
+| 3 | Custom MPI programs + scaling laws | ✅ Complete |
+| 4 | Task Distributor (non-MPI) | ✅ Complete |
+| 5 | Monitoring (Prometheus + Grafana) | ✅ Complete |
+| 6 | AI model training + Hailo inference | ✅ Complete |
+| 7 | Backend REST API + PostgreSQL | ✅ Complete |
+| 8 | React frontend dashboard | ✅ Complete |
+| 9 | Telegram alert notifications | ✅ Complete |
+| 10 | Documentation + presentation | 🔄 In Progress |
+
+---
+
+*Frankfurt University of Applied Sciences — Cloud Computing SS2026*
