@@ -118,7 +118,7 @@ export default function Dashboard() {
                 : '🔍 Scanning...'}
             </span>
             <span style={{ color: COLORS.dim, fontSize: 13 }}>
-              FPS: {status?.fps || '--'} | Hailo: {status?.hailo_ms || '--'}ms | Alerts: {status?.alert_count || 0}
+              FPS: {status?.fps || '--'} | Hailo: {status?.hailo_ms || '--'}ms | Alerts: {totalAlerts}
             </span>
           </div>
 

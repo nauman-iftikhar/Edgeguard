@@ -58,8 +58,8 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "admin123")
 
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-MINIO_HOST   = os.getenv("MINIO_HOST", "10.10.10.1:9000")
-MINIO_PUBLIC = os.getenv("MINIO_PUBLIC", "10.100.47.201:30900")
+MINIO_HOST   = os.getenv("MINIO_HOST", "minio-service:9000")
+MINIO_PUBLIC = os.getenv("MINIO_PUBLIC", "192.168.209.52:30900")
 MINIO_ACCESS = os.getenv("MINIO_ACCESS", "minioadmin")
 MINIO_SECRET = os.getenv("MINIO_SECRET", "minioadmin")
 MINIO_BUCKET = "surveillance-snapshots"
