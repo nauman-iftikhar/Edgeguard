@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task 5 — Monitoring | EdgeGuard SS2026</title>
+<style>
+  :root {
+    --bg: #f0f4f8; --surface: #ffffff; --surface2: #f8fafc;
+    --border: #e2e8f0; --accent: #0d9e75; --accent2: #2563a8;
+    --text: #0f172a; --text2: #64748b; --text3: #475569;
+    --warn: #d97706; --danger: #dc2626;
+    --code-bg: #1e293b; --code-text: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+
+  header { background: #1a3a5c; padding: 0 40px; border-bottom: 3px solid var(--accent); }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 36px 0 32px; }
+  .breadcrumb { font-size: 0.78rem; color: #93c5fd; margin-bottom: 12px; }
+  .breadcrumb a { color: #6ee7c7; text-decoration: none; }
+  .task-eyebrow { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: #6ee7c7; margin-bottom: 10px; }
+  header h1 { font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-bottom: 10px; }
+  header p { color: #93c5fd; font-size: 0.95rem; max-width: 700px; margin-bottom: 18px; }
+  .header-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge { font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; background: rgba(255,255,255,0.08); }
+  .badge.green { border-color: #6ee7c7; color: #6ee7c7; }
+  .badge.lead  { border-color: #93c5fd; color: #93c5fd; background: rgba(147,197,253,0.1); }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 48px 40px; }
+
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px; margin-bottom: 24px; }
+  .section h2 { font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .section h2::before { content: ''; display: inline-block; width: 3px; height: 18px; background: var(--accent); border-radius: 2px; }
+  .section h2.blue::before { background: var(--accent2); }
+  .section h2.orange::before { background: var(--warn); }
+  .section h2.purple::before { background: #7c3aed; }
+  .section p { font-size: 0.9rem; color: var(--text3); line-height: 1.7; margin-top: 8px; }
+  .section h3 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
+
+  .code-wrap { background: var(--code-bg); border-radius: 8px; overflow: hidden; margin: 14px 0; }
+  .code-header { background: #0f172a; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .code-lang { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; }
+  .code-title { font-size: 0.78rem; color: #94a3b8; }
+  pre { padding: 16px; overflow-x: auto; color: var(--code-text); line-height: 1.7; font-family: 'Courier New', monospace; font-size: 0.82rem; }
+  .c-green { color: #4ade80; } .c-blue { color: #93c5fd; } .c-gray { color: #64748b; }
+  .c-yellow { color: #fde68a; } .c-orange { color: #fdba74; } .c-purple { color: #c4b5fd; }
+
+  .finding { border-left: 3px solid var(--accent); background: #f0fdf4; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .finding.warn { border-color: var(--warn); background: #fffbeb; }
+  .finding.info { border-color: var(--accent2); background: #eff6ff; }
+  .finding.purple { border-color: #7c3aed; background: #f5f3ff; }
+  .finding h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+  .finding p  { font-size: 0.85rem; color: #444; margin: 0; line-height: 1.6; }
+
+  /* Stack flow */
+  .stack-flow { display: flex; align-items: center; gap: 0; margin: 20px 0; flex-wrap: wrap; }
+  .stack-node { background: var(--surface2); border: 2px solid var(--border); border-radius: 8px; padding: 14px 18px; text-align: center; min-width: 130px; }
+  .stack-node .sn-icon { font-size: 1.4rem; margin-bottom: 4px; }
+  .stack-node .sn-name { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+  .stack-node .sn-desc { font-size: 0.72rem; color: var(--text2); margin-top: 2px; }
+  .stack-node.green { border-color: var(--accent); }
+  .stack-node.blue  { border-color: var(--accent2); }
+  .stack-node.purple { border-color: #7c3aed; }
+  .stack-arrow { font-size: 1.2rem; color: var(--text2); padding: 0 8px; }
+
+  /* Step list */
+  .steps { list-style: none; }
+  .step { display: flex; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .step:last-child { border: none; }
+  .step-num { width: 30px; height: 30px; border-radius: 50%; background: #1a3a5c; color: white; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+  .step-content h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+  .step-content p  { font-size: 0.85rem; color: var(--text3); margin: 0; line-height: 1.6; }
+
+  /* Metrics grid */
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; }
+  .metric-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .metric-card h4 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text2); margin-bottom: 8px; }
+  .metric-item { font-size: 0.82rem; color: var(--text3); padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .metric-item:last-child { border: none; }
+  .metric-item code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-size: 0.78rem; color: var(--accent2); }
+
+  /* Image placeholder */
+  .img-block { margin: 20px 0; }
+  .img-block img { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; }
+  .img-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: var(--surface2); border: 2px dashed var(--border); border-radius: 8px; padding: 28px; text-align: center; }
+  .img-placeholder .img-icon { font-size: 1.8rem; }
+  .img-placeholder .img-name { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--accent2); font-weight: 700; }
+  .img-placeholder .img-desc { font-size: 0.78rem; color: var(--text2); }
+  .img-caption { font-size: 0.78rem; color: var(--text2); text-align: center; margin-top: 8px; font-style: italic; }
+  .img-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+
+  .bottom-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+  .nav-btn { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 0.88rem; padding: 10px 20px; border-radius: 8px; font-weight: 600; transition: all 0.15s; }
+  .nav-btn.prev { color: var(--text2); border: 1px solid var(--border); background: var(--surface); }
+  .nav-btn.prev:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn.next { color: white; background: #1a3a5c; border: 1px solid #1a3a5c; }
+  .nav-btn.next:hover { background: var(--accent); border-color: var(--accent); }
+
+  footer { background: #1a3a5c; border-top: 3px solid var(--accent); padding: 24px 40px; text-align: center; font-size: 0.82rem; color: #93c5fd; }
+  footer a { color: #6ee7c7; text-decoration: none; }
+
+  @media (max-width: 768px) {
+    header, footer { padding: 0 20px; }
+    .container { padding: 24px 20px; }
+    header h1 { font-size: 1.6rem; }
+    .stack-flow { flex-direction: column; align-items: flex-start; }
+    .img-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="breadcrumb"><a href="index.html">← EdgeGuard Docs</a> / Task 5</div>
+    <div class="task-eyebrow">Task 5 · Monitoring</div>
+    <h1>Monitoring Solution</h1>
+    <p>Real-time cluster health monitoring using Prometheus, Grafana, and Node Exporter — deployed as persistent k3s services across all 10 nodes.</p>
+    <div class="header-meta">
+      <span class="badge lead">👤 Lead: Muhammad Abdullah Nagori</span>
+      <span class="badge green">✓ Complete</span>
+      <span class="badge">Prometheus · Grafana · Node Exporter · k3s</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Overview -->
+  <div class="section">
+    <h2>Overview</h2>
+    <p>
+      In a 10-node cluster running production workloads alongside benchmarks, you need to know 
+      what is happening on every node at all times — which nodes are online, how much CPU they 
+      are using, whether memory is getting tight, and whether services are healthy. 
+      Without monitoring, debugging a crashed benchmark or a failing pod is guesswork.
+    </p>
+    <p>
+      We deployed a standard cloud-native monitoring stack: <b>Node Exporter</b> runs on every 
+      node and exposes hardware metrics. <b>Prometheus</b> scrapes those metrics every 10 seconds 
+      and stores them as time-series data. <b>Grafana</b> reads from Prometheus and renders 
+      interactive dashboards. The EdgeGuard <b>backend</b> also queries Prometheus directly 
+      to feed real-time data to the React dashboard.
+    </p>
+
+
+  </div>
+
+  <!-- The Stack -->
+  <div class="section">
+    <h2 class="blue">The Monitoring Stack — How It All Connects</h2>
+    <p>Three components work together. Think of it as a pipeline: collect → store → visualize.</p>
+
+    <div class="stack-flow">
+      <div class="stack-node green">
+        <div class="sn-icon">📡</div>
+        <div class="sn-name">Node Exporter</div>
+        <div class="sn-desc">Runs on every node<br>Exposes metrics on :9100</div>
+      </div>
+      <div class="stack-arrow">→</div>
+      <div class="stack-node blue">
+        <div class="sn-icon">🗄️</div>
+        <div class="sn-name">Prometheus</div>
+        <div class="sn-desc">Scrapes all nodes<br>Stores time-series data</div>
+      </div>
+      <div class="stack-arrow">→</div>
+      <div class="stack-node purple">
+        <div class="sn-icon">📊</div>
+        <div class="sn-name">Grafana</div>
+        <div class="sn-desc">Reads Prometheus<br>Renders dashboards</div>
+      </div>
+      <div class="stack-arrow">→</div>
+      <div class="stack-node">
+        <div class="sn-icon">🖥️</div>
+        <div class="sn-name">EdgeGuard UI</div>
+        <div class="sn-desc">Backend queries<br>Prometheus directly</div>
+      </div>
+    </div>
+
+    <h3>Component 1 — Node Exporter</h3>
+    <p>
+      Node Exporter is a lightweight agent that runs on every single node in the cluster 
+      (all 10 — Pi5, Pi4, and all 8× Pi3s). It reads hardware and OS metrics directly 
+      from the Linux kernel and exposes them as an HTTP endpoint on port 9100. 
+      Prometheus then scrapes this endpoint.
+    </p>
+    <p>
+      Node Exporter was deployed as a <b>systemd service</b> on each node so it starts 
+      automatically on boot and restarts if it crashes.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Check Node Exporter is running on a Pi3 node</span></div>
+      <pre><span class="c-gray"># SSH into any node and check status</span>
+ssh admin@10.10.10.21 <span class="c-green">"systemctl status node_exporter"</span>
+
+<span class="c-gray"># Check the metrics endpoint directly</span>
+curl http://10.10.10.21:9100/metrics | head -20
+
+<span class="c-gray"># Example output lines:</span>
+<span class="c-green">node_cpu_seconds_total{cpu="0",mode="idle"} 12345.67</span>
+<span class="c-green">node_memory_MemAvailable_bytes 456789012</span>
+<span class="c-green">node_thermal_zone_temp{zone="0"} 42900</span>  <span class="c-gray">← temperature in millidegrees</span></pre>
+    </div>
+
+    <h3>Component 2 — Prometheus</h3>
+    <p>
+      Prometheus is the central metrics collector. It runs as a <b>k3s Deployment</b> on the Pi5 
+      and scrapes every node's Node Exporter endpoint every 10 seconds. All scraped data is 
+      stored as time-series in Prometheus's local storage — meaning you can query not just 
+      current values but also historical trends (e.g. "what was CPU usage 30 minutes ago?").
+    </p>
+    <p>
+      The key configuration is the <b>scrape config</b> — a list of all nodes Prometheus 
+      should collect metrics from, and how often.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml</span><span class="code-title">Prometheus scrape config (prometheus.yml — key section)</span></div>
+      <pre><span class="c-yellow">global:</span>
+  <span class="c-blue">scrape_interval:</span> <span class="c-green">10s</span>     <span class="c-gray"># scrape every 10 seconds</span>
+  <span class="c-blue">evaluation_interval:</span> <span class="c-green">10s</span>
+
+<span class="c-yellow">scrape_configs:</span>
+  - <span class="c-blue">job_name:</span> <span class="c-green">'node-exporter'</span>
+    <span class="c-blue">static_configs:</span>
+      - <span class="c-blue">targets:</span>
+        <span class="c-gray"># Pi5 master node</span>
+        - <span class="c-green">'10.10.10.1:9100'</span>
+        <span class="c-gray"># Pi4 sensor node</span>
+        - <span class="c-green">'10.10.10.40:9100'</span>
+        <span class="c-gray"># Pi3 worker nodes</span>
+        - <span class="c-green">'10.10.10.21:9100'</span>
+        - <span class="c-green">'10.10.10.22:9100'</span>
+        - <span class="c-green">'10.10.10.23:9100'</span>
+        - <span class="c-green">'10.10.10.24:9100'</span>
+        - <span class="c-green">'10.10.10.25:9100'</span>
+        - <span class="c-green">'10.10.10.26:9100'</span>
+        - <span class="c-green">'10.10.10.27:9100'</span>
+        - <span class="c-green">'10.10.10.28:9100'</span></pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Check Prometheus is running in k3s</span></div>
+      <pre><span class="c-gray"># Check pod status</span>
+kubectl get pods -A | grep prometheus
+
+<span class="c-gray"># Check all targets are UP (all 10 nodes should show UP)</span>
+curl http://localhost:9090/api/v1/targets | python3 -m json.tool | grep -E '"health"|"job"'</pre>
+    </div>
+
+    <h3>Component 3 — Grafana</h3>
+    <p>
+      Grafana is the visualization layer. It runs as a <b>k3s Deployment</b> on Pi5 and 
+      connects to Prometheus as a data source. We configured pre-built dashboards showing 
+      per-node CPU, RAM, temperature, and uptime. The dashboards auto-refresh every 10 seconds 
+      matching the Prometheus scrape interval.
+    </p>
+    <p>
+      Grafana is deployed behind a <b>NodePort service</b> making it accessible on the cluster 
+      network. The EdgeGuard frontend Monitoring page embeds a direct link to the Grafana dashboard.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Check Grafana is running in k3s</span></div>
+      <pre><span class="c-gray"># Check pod status</span>
+kubectl get pods -A | grep grafana
+
+<span class="c-gray"># Check service and NodePort</span>
+kubectl get svc -A | grep grafana</pre>
+    </div>
+  </div>
+
+  <!-- What is monitored -->
+  <div class="section">
+    <h2>What is Monitored</h2>
+    <p>Node Exporter exposes hundreds of metrics but we focus on the ones that matter for a Raspberry Pi cluster running benchmarks and AI inference.</p>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <h4>CPU</h4>
+        <div class="metric-item">Overall CPU usage % <code>node_cpu_seconds_total</code></div>
+        <div class="metric-item">Per-core usage breakdown</div>
+        <div class="metric-item">CPU frequency (throttling detection)</div>
+        <div class="metric-item">Load average (1m, 5m, 15m)</div>
+      </div>
+      <div class="metric-card">
+        <h4>Memory</h4>
+        <div class="metric-item">Total RAM <code>node_memory_MemTotal_bytes</code></div>
+        <div class="metric-item">Available RAM <code>node_memory_MemAvailable_bytes</code></div>
+        <div class="metric-item">Swap usage <code>node_memory_SwapFree_bytes</code></div>
+        <div class="metric-item">Cache and buffer sizes</div>
+      </div>
+      <div class="metric-card">
+        <h4>Temperature</h4>
+        <div class="metric-item">CPU temperature <code>node_thermal_zone_temp</code></div>
+        <div class="metric-item">Critical: 80°C (throttling)</div>
+        <div class="metric-item">Target during benchmarks: &lt;65°C</div>
+        <div class="metric-item">Fan cooling verified via monitoring</div>
+      </div>
+      <div class="metric-card">
+        <h4>System</h4>
+        <div class="metric-item">Uptime <code>node_time_seconds</code></div>
+        <div class="metric-item">Node online/offline status</div>
+        <div class="metric-item">Network traffic (eth0)</div>
+        <div class="metric-item">Disk I/O (NFS read/write)</div>
+      </div>
+    </div>
+
+    <div class="finding warn">
+      <h4>⚠️ Why temperature monitoring matters for this cluster</h4>
+      <p>Raspberry Pi 3B+ throttles its CPU frequency when it exceeds 80°C — silently reducing 
+      performance without any error. During sustained HPL and MPI benchmarks, nodes without 
+      active cooling regularly hit this threshold. Monitoring confirmed that fan cooling kept 
+      all nodes below 65°C throughout our benchmarks, ensuring results were not affected by 
+      thermal throttling.</p>
+    </div>
+  </div>
+
+  <!-- EdgeGuard Integration -->
+  <div class="section">
+    <h2 class="orange">Integration with EdgeGuard Dashboard</h2>
+    <p>
+      Prometheus is not just for Grafana — our backend queries it directly via the 
+      Prometheus HTTP API to feed real-time data into the EdgeGuard React frontend. 
+      This means the monitoring data appears in our own dashboard, not just in Grafana.
+    </p>
+
+    <h3>Backend /api/system/status Endpoint</h3>
+    <p>
+      The Flask backend exposes a <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">/api/system/status</code> endpoint 
+      that queries Prometheus and returns per-node CPU and RAM in a format the 
+      React frontend can display. This powers the live node grid on the Monitoring page.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><span class="code-title">How backend queries Prometheus (simplified)</span></div>
+      <pre><span class="c-gray"># Backend queries Prometheus HTTP API</span>
+<span class="c-gray"># Prometheus runs at http://prometheus-service:9090</span>
+
+<span class="c-blue">import</span> requests
+
+<span class="c-blue">def</span> <span class="c-green">get_node_cpu</span>(node_ip):
+    <span class="c-gray"># PromQL query: average CPU usage over last 1 minute</span>
+    query = <span class="c-green">f'100 - (avg by (instance) '</span>
+            <span class="c-green">f'(rate(node_cpu_seconds_total{{mode="idle",instance="{node_ip}:9100"}}[1m])) * 100)'</span>
+    
+    response = requests.get(
+        <span class="c-green">'http://prometheus-service:9090/api/v1/query'</span>,
+        params={<span class="c-green">'query'</span>: query}
+    )
+    result = response.json()[<span class="c-green">'data'</span>][<span class="c-green">'result'</span>]
+    <span class="c-blue">return</span> float(result[0][<span class="c-green">'value'</span>][1]) <span class="c-blue">if</span> result <span class="c-blue">else</span> 0</pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json</span><span class="code-title">Example /api/system/status response</span></div>
+      <pre>{
+  <span class="c-green">"nodes"</span>: [
+    {
+      <span class="c-green">"name"</span>: <span class="c-green">"pi3-01"</span>,
+      <span class="c-green">"ip"</span>: <span class="c-green">"10.10.10.21"</span>,
+      <span class="c-green">"status"</span>: <span class="c-green">"online"</span>,
+      <span class="c-green">"cpu"</span>: <span class="c-orange">6.2</span>,       <span class="c-gray">← CPU usage %</span>
+      <span class="c-green">"ram"</span>: <span class="c-orange">43.8</span>,      <span class="c-gray">← RAM usage %</span>
+      <span class="c-green">"uptime"</span>: <span class="c-green">"2d 4h"</span>
+    },
+    <span class="c-gray">// ... all 10 nodes</span>
+  ],
+  <span class="c-green">"services"</span>: [
+    { <span class="c-green">"name"</span>: <span class="c-green">"Detection Service"</span>, <span class="c-green">"status"</span>: <span class="c-green">"running"</span> },
+    { <span class="c-green">"name"</span>: <span class="c-green">"Backend API"</span>,       <span class="c-green">"status"</span>: <span class="c-green">"running"</span> },
+    { <span class="c-green">"name"</span>: <span class="c-green">"Prometheus"</span>,        <span class="c-green">"status"</span>: <span class="c-green">"running"</span> },
+    { <span class="c-green">"name"</span>: <span class="c-green">"Grafana"</span>,           <span class="c-green">"status"</span>: <span class="c-green">"running"</span> }
+  ]
+}</pre>
+    </div>
+
+    <h3>How k3s Keeps Everything Running</h3>
+    <p>
+      Both Prometheus and Grafana are deployed as <b>k3s Deployments</b> — not just 
+      standalone processes. This means k3s automatically restarts them if they crash, 
+      reschedules them if a node goes down, and keeps them running across reboots. 
+      You do not need to manually start Prometheus or Grafana after a reboot — 
+      k3s handles it.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Verify full monitoring stack is healthy</span></div>
+      <pre><span class="c-gray"># All monitoring pods should show Running</span>
+kubectl get pods -A | grep -E "prometheus|grafana|node-exporter"
+
+<span class="c-gray"># Check node exporter on all Pi3s</span>
+<span class="c-blue">for</span> ip <span class="c-blue">in</span> 10.10.10.21 10.10.10.22 10.10.10.23 10.10.10.24 \
+          10.10.10.25 10.10.10.26 10.10.10.27 10.10.10.28; <span class="c-blue">do</span>
+    echo -n <span class="c-green">"$ip node_exporter: "</span>
+    ssh admin@$ip <span class="c-green">"systemctl is-active node_exporter"</span>
+<span class="c-blue">done</span></pre>
+    </div>
+  </div>
+
+  <!-- Screenshots -->
+  <div class="section">
+    <h2 class="purple">Dashboard Screenshots</h2>
+
+    <div class="img-grid">
+      <div class="img-block">
+        <img src="grafana_dashboard.png" alt="Grafana Dashboard"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="img-placeholder">
+          <span class="img-icon">📊</span>
+          <span class="img-name">grafana_dashboard.png</span>
+          <span class="img-desc">Grafana — Per-node CPU, RAM, Temperature Dashboard</span>
+        </div>
+        <div class="img-caption">Figure 1 — Grafana dashboard showing all 10 nodes with CPU usage, RAM, and temperature metrics.</div>
+      </div>
+      <div class="img-block">
+        <img src="edgeguard_node_grid.png" alt="EdgeGuard Node Grid"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="img-placeholder">
+          <span class="img-icon">🖥️</span>
+          <span class="img-name">edgeguard_node_grid.png</span>
+          <span class="img-desc">EdgeGuard Dashboard — Live Node Health Grid</span>
+        </div>
+        <div class="img-caption">Figure 2 — EdgeGuard Monitoring page showing live per-node status powered by Prometheus data.</div>
+      </div>
+    </div>
+
+    <div class="img-block">
+      <img src="prometheus_targets.png" alt="Prometheus Targets"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="img-placeholder">
+        <span class="img-icon">🎯</span>
+        <span class="img-name">prometheus_targets.png</span>
+        <span class="img-desc">Prometheus Targets Page — All 10 nodes showing UP status</span>
+      </div>
+      <div class="img-caption">Figure 3 — Prometheus targets page confirming all 10 node exporters are reachable and scraping successfully.</div>
+    </div>
+  </div>
+
+  <!-- Key Findings -->
+  <div class="section">
+    <h2>Key Points for Presentation</h2>
+
+    <div class="finding">
+      <h4>✅ Full-stack monitoring across all 10 nodes</h4>
+      <p>Node Exporter runs on every node including Pi5, Pi4, and all 8× Pi3s. 
+      Prometheus scrapes all 10 nodes every 10 seconds. 
+      No node is unmonitored — giving complete cluster visibility.</p>
+    </div>
+    <div class="finding">
+      <h4>✅ Monitoring is integrated into the EdgeGuard product</h4>
+      <p>It is not just a separate Grafana dashboard — the Flask backend queries Prometheus 
+      directly and serves real-time node metrics to the React frontend. 
+      The Monitoring page is a first-class feature of EdgeGuard, not an add-on.</p>
+    </div>
+    <div class="finding warn">
+      <h4>⚠️ Monitoring confirmed thermal behavior during benchmarks</h4>
+      <p>Temperature data from Node Exporter confirmed Pi3 nodes stayed below 65°C 
+      during all MPI and HPL benchmarks with active fan cooling. 
+      This validates that benchmark results were not affected by CPU throttling.</p>
+    </div>
+    <div class="finding info">
+      <h4>🔍 Why Prometheus + Grafana and not something simpler?</h4>
+      <p>Prometheus is the industry standard for Kubernetes cluster monitoring — it is 
+      what every real cloud cluster uses. Using it here demonstrates real-world cloud 
+      computing practices, not just a student experiment. 
+      The same stack runs in production clusters at Google, Airbnb, and others.</p>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <a href="task4.html" class="nav-btn prev">← Task 4 — Task Distributor</a>
+    <a href="task6.html" class="nav-btn next">Task 6 — AI Inference →</a>
+  </div>
+
+</div>
+
+<footer>
+  EdgeGuard SS2026 · Frankfurt University of Applied Sciences · Prof. Dr. Christian Baun ·
+  <a href="index.html">← Back to Docs</a> ·
+  <a href="https://github.com/nauman-iftikhar/Edgeguard">GitHub</a> ·
+  Presentation: July 16, 2026 · Room 1-234 · 14:15–17:15
+</footer>
+
+</body>
+</html>

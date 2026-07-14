@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task 2 — HPL Benchmark | EdgeGuard SS2026</title>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --surface2: #f8fafc;
+    --border: #e2e8f0;
+    --accent: #0d9e75;
+    --accent2: #2563a8;
+    --text: #0f172a;
+    --text2: #64748b;
+    --text3: #475569;
+    --warn: #d97706;
+    --danger: #dc2626;
+    --code-bg: #1e293b;
+    --code-text: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  header { background: #1a3a5c; padding: 0 40px; border-bottom: 3px solid var(--accent); }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 36px 0 32px; }
+  .breadcrumb { font-size: 0.78rem; color: #93c5fd; margin-bottom: 12px; }
+  .breadcrumb a { color: #6ee7c7; text-decoration: none; }
+  .task-eyebrow { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: #6ee7c7; margin-bottom: 10px; }
+  header h1 { font-size: 2.2rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; margin-bottom: 10px; }
+  header p { color: #93c5fd; font-size: 0.95rem; max-width: 700px; margin-bottom: 18px; }
+  .header-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .badge { font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; background: rgba(255,255,255,0.08); }
+  .badge.green { border-color: #6ee7c7; color: #6ee7c7; }
+  .badge.lead  { border-color: #93c5fd; color: #93c5fd; background: rgba(147,197,253,0.1); }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 48px 40px; }
+
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px; margin-bottom: 24px; }
+  .section h2 { font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .section h2::before { content: ''; display: inline-block; width: 3px; height: 18px; background: var(--accent); border-radius: 2px; }
+  .section h2.blue::before { background: var(--accent2); }
+  .section h2.orange::before { background: var(--warn); }
+  .section p { font-size: 0.9rem; color: var(--text3); line-height: 1.7; margin-top: 8px; }
+  .section h3 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
+
+  .code-wrap { background: var(--code-bg); border-radius: 8px; overflow: hidden; margin: 14px 0; }
+  .code-header { background: #0f172a; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .code-lang { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; }
+  .code-title { font-size: 0.78rem; color: #94a3b8; }
+  pre { padding: 16px; overflow-x: auto; color: var(--code-text); line-height: 1.7; font-family: 'Courier New', monospace; font-size: 0.82rem; }
+  .c-green { color: #4ade80; }
+  .c-yellow { color: #fde68a; }
+  .c-blue { color: #93c5fd; }
+  .c-gray { color: #64748b; }
+  .c-red { color: #fca5a5; }
+  .placeholder { background: rgba(251,191,36,0.2); color: #fbbf24; padding: 0 3px; border-radius: 3px; font-style: italic; }
+
+  .finding { border-left: 3px solid var(--accent); background: #f0fdf4; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 0.88rem; }
+  .finding.warn { border-color: var(--warn); background: #fffbeb; }
+  .finding.bad  { border-color: var(--danger); background: #fef2f2; }
+  .finding.info { border-color: var(--accent2); background: #eff6ff; }
+  .finding h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+  .finding p  { font-size: 0.85rem; color: #444; margin: 0; }
+
+  .params-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; }
+  .param-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .param-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text2); margin-bottom: 4px; }
+  .param-value { font-size: 1rem; font-weight: 700; color: var(--accent2); font-family: 'Courier New', monospace; }
+  .param-note { font-size: 0.75rem; color: var(--text2); margin-top: 4px; }
+
+  /* Image placeholder */
+  .img-block { margin: 20px 0; }
+  .img-block img { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; }
+  .img-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 32px;
+    text-align: center;
+  }
+  .img-placeholder .img-icon { font-size: 2rem; }
+  .img-placeholder .img-name { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--accent2); font-weight: 700; }
+  .img-placeholder .img-desc { font-size: 0.8rem; color: var(--text2); }
+  .img-caption { font-size: 0.78rem; color: var(--text2); text-align: center; margin-top: 8px; font-style: italic; }
+
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 14px 0; }
+  .data-table th { background: #1a3a5c; color: white; padding: 9px 14px; text-align: left; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .data-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--text3); }
+  .data-table tr:hover td { background: var(--surface2); }
+  .data-table td b { color: var(--text); }
+
+  /* Bottom nav */
+  .bottom-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+  .nav-btn { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 0.88rem; padding: 10px 20px; border-radius: 8px; font-weight: 600; transition: all 0.15s; }
+  .nav-btn.prev { color: var(--text2); border: 1px solid var(--border); background: var(--surface); }
+  .nav-btn.prev:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn.next { color: white; background: #1a3a5c; border: 1px solid #1a3a5c; }
+  .nav-btn.next:hover { background: var(--accent); border-color: var(--accent); }
+
+  footer { background: #1a3a5c; border-top: 3px solid var(--accent); padding: 24px 40px; text-align: center; font-size: 0.82rem; color: #93c5fd; }
+  footer a { color: #6ee7c7; text-decoration: none; }
+
+  @media (max-width: 768px) {
+    header, footer { padding: 0 20px; }
+    .container { padding: 24px 20px; }
+    header h1 { font-size: 1.6rem; }
+    .params-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="breadcrumb"><a href="index.html">← EdgeGuard Docs</a> / Task 2</div>
+    <div class="task-eyebrow">Task 2 · HPL Benchmark</div>
+    <h1>HPL Benchmark (GFLOPS)</h1>
+    <p>Measuring sustained floating-point performance of the cluster using the industry-standard High Performance LINPACK benchmark.</p>
+    <div class="header-meta">
+      <span class="badge lead">👤 Lead: Nauman Iftikhar, Abdur Rahim Nishad</span>
+      <span class="badge green">✓ Complete</span>
+      <span class="badge">HPCC 1.5.0 · OpenMPI · Pi3-only</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- What is HPL -->
+  <div class="section">
+    <h2>What is HPL?</h2>
+    <p>
+      HPL (High Performance LINPACK) is the industry-standard benchmark used to rank the 
+      <a href="https://top500.org" style="color:var(--accent2)">TOP500 supercomputers</a> worldwide. 
+      It measures how fast a system can solve a dense system of linear equations using 
+      LU factorization with partial pivoting. The result is reported in <b>GFLOPS</b> 
+      (billions of floating-point operations per second) — higher is better.
+    </p>
+    <p>
+      We used the <b>HPCC 1.5.0</b> package which includes HPL alongside other benchmarks. 
+      All compute ran exclusively on the 8× Pi3 nodes (32 cores total). The Pi5 master 
+      node was excluded from compute — it runs production services simultaneously 
+      (k3s, inference, PostgreSQL, MinIO, Prometheus).
+    </p>
+  </div>
+
+  <!-- Test Setup -->
+  <div class="section">
+    <h2 class="blue">Test Setup</h2>
+
+    <div class="params-grid">
+      <div class="param-card">
+        <div class="param-label">Tool</div>
+        <div class="param-value">HPCC 1.5.0</div>
+        <div class="param-note">Binary: /usr/bin/hpcc</div>
+      </div>
+      <div class="param-card">
+        <div class="param-label">Block Size (NB)</div>
+        <div class="param-value">128</div>
+        <div class="param-note">Optimal for ARM Cortex-A53</div>
+      </div>
+      <div class="param-card">
+        <div class="param-label">Processes/Node</div>
+        <div class="param-value">4</div>
+        <div class="param-note">One per physical core</div>
+      </div>
+      <div class="param-card">
+        <div class="param-label">Cooldown</div>
+        <div class="param-value">60s</div>
+        <div class="param-note">Between runs for thermal recovery</div>
+      </div>
+      <div class="param-card">
+        <div class="param-label">Runs per Config</div>
+        <div class="param-value">4–5</div>
+        <div class="param-note">Min/max/mean reported</div>
+      </div>
+      <div class="param-card">
+        <div class="param-label">Nodes Used</div>
+        <div class="param-value">Pi3 only</div>
+        <div class="param-note">Pi5 excluded from compute</div>
+      </div>
+    </div>
+
+    <h3>Problem Size (N) — Why These Values?</h3>
+    <p>HPL performance scales with problem size — a larger N means more compute per communication event, which improves efficiency. However N is constrained by available RAM: the matrix requires N² × 8 bytes of memory distributed across all MPI processes.</p>
+    <p style="margin-top:8px">We used the following formula to select the largest N that fits safely in RAM without triggering swap:</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">formula</span><span class="code-title">N selection formula</span></div>
+      <pre><span class="c-green">N = sqrt(0.7 × num_nodes × available_RAM_per_node / 8)</span>
+
+Where:
+  0.7       = safety factor (use only 70% of RAM, leave room for OS)
+  num_nodes = number of Pi3 nodes participating
+  600 MB    = safe usable RAM per Pi3 (out of 1024MB total)
+  8         = bytes per double-precision float
+
+<span class="c-gray">Example: 4 cores (1 node)</span>
+N = sqrt(0.7 × 1 × 600MB / 8) = sqrt(52,500,000) ≈ 7,245
+<span class="c-gray">Rounded down to N=6000 to stay well within limits.</span></pre>
+    </div>
+
+    <div class="finding warn">
+      <h4>⚠️ Why not use the maximum N?</h4>
+      <p>We initially tested N=7000 at 4 cores — this caused memory swap on pi3-01, 
+      degrading performance significantly. We reduced to N=6000 which fits cleanly 
+      within available RAM. Similarly, N=11000 at 16 cores caused pi3-01 to crash 
+      due to combined memory pressure and power instability on pi3-02. 
+      Reduced to N=10000 which ran stably.</p>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead>
+          <tr><th>Cores</th><th>Nodes</th><th>N</th><th>P×Q Grid</th><th>Matrix Size</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>1</b></td><td>1</td><td>5,000</td><td>1×1</td><td>~190 MB</td><td>Safe — fits in 1GB</td></tr>
+          <tr><td><b>2</b></td><td>1</td><td>5,500</td><td>1×2</td><td>~230 MB</td><td>Safe — same node</td></tr>
+          <tr><td><b>4</b></td><td>1</td><td>6,000</td><td>2×2</td><td>~274 MB</td><td>Reduced from 7000 (swap at pi3-01)</td></tr>
+          <tr><td><b>8</b></td><td>2</td><td>8,000</td><td>2×4</td><td>~244 MB/node</td><td>pi3-02 excluded (power instability)</td></tr>
+          <tr><td><b>16</b></td><td>4</td><td>10,000</td><td>4×4</td><td>~190 MB/node</td><td>Reduced from 11000 (crash at pi3-01)</td></tr>
+          <tr><td><b>24</b></td><td>6</td><td>13,000</td><td>4×6</td><td>~222 MB/node</td><td>Stable — no issues</td></tr>
+          <tr><td><b>32</b></td><td>8</td><td>15,000</td><td>4×8</td><td>~222 MB/node</td><td>Includes pi3-02 (load distributed)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="finding bad">
+      <h4>❌ Memory Swap / Crash Events During Testing</h4>
+      <p><b>N=7000, 4 cores (pi3-01):</b> Memory swap detected — performance degraded badly. Reduced to N=6000.<br><br>
+      <b>N=11000, 16 cores:</b> pi3-01 ran out of memory and crashed mid-run (SSH connection refused). Combined effect of pi3-02 power instability and memory pressure. Reduced to N=10000 which ran stably with 4 valid runs.<br><br>
+      <b>N≥8000, 8 cores with pi3-02:</b> pi3-02 spontaneously rebooted under sustained HPL load — confirmed as power supply limitation. Node excluded from 8 and 16 core configurations.</p>
+    </div>
+
+    <h3>Node Order</h3>
+    <p>Pi3-02 was placed last in the node order due to power instability under sustained HPL load. It is only used at 32 cores where the load is distributed across all 8 nodes.</p>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">text</span><span class="code-title">MPI node order</span></div>
+      <pre>pi3-01 → pi3-03 → pi3-04 → pi3-05 → pi3-06 → pi3-07 → pi3-08 → pi3-02 (last)</pre>
+    </div>
+  </div>
+
+  <!-- How to Reproduce -->
+  <div class="section">
+    <h2>How to Reproduce</h2>
+    <p>Before running, stop k3s-agent on all Pi3 nodes and ensure the correct <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">hpccinf.txt</code> is copied to all participating nodes.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Step 1 — Stop k3s-agent on all Pi3 nodes</span></div>
+      <pre><span class="c-blue">for</span> ip <span class="c-blue">in</span> 10.10.10.21 10.10.10.22 10.10.10.23 10.10.10.24 \
+          10.10.10.25 10.10.10.26 10.10.10.27 10.10.10.28; <span class="c-blue">do</span>
+    ssh admin@$ip <span class="c-green">"sudo systemctl stop k3s-agent"</span> &
+<span class="c-blue">done</span>
+wait</pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Step 2 — Create hostfile for your core count</span></div>
+      <pre><span class="c-gray"># Replace &lt;CORES&gt; with: 1, 2, 4, 8, 16, 24, or 32</span>
+python3 -c <span class="c-green">"
+cores = <span class="placeholder">&lt;CORES&gt;</span>
+nodes = ['pi3-01','pi3-03','pi3-04','pi3-05','pi3-06','pi3-07','pi3-08','pi3-02']
+remaining = cores
+for n in nodes:
+    if remaining <= 0: break
+    slots = min(4, remaining)
+    print(f'{n} slots={slots}')
+    remaining -= slots
+"</span> > /tmp/hpl_hostfile</pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Step 3 — Copy HPL config to all nodes</span></div>
+      <pre><span class="c-gray"># hpccinf.txt files are in /nfs/shared/hpl-tests/</span>
+<span class="c-gray"># Copy the correct config for your core count</span>
+<span class="c-blue">for</span> ip <span class="c-blue">in</span> <span class="placeholder">&lt;NODE_IPs&gt;</span>; <span class="c-blue">do</span>
+    scp /nfs/shared/hpl-tests/HPL_<span class="placeholder">&lt;CORES&gt;</span>cores.dat \
+        admin@$ip:~/hpccinf.txt &
+<span class="c-blue">done</span>
+wait</pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Step 4 — Run HPL and collect result</span></div>
+      <pre><span class="c-gray"># Clear previous result</span>
+ssh admin@10.10.10.21 <span class="c-green">"rm -f ~/hpccoutf.txt"</span>
+
+<span class="c-gray"># Run benchmark</span>
+cd /home/admin
+mpirun -np <span class="placeholder">&lt;CORES&gt;</span> --hostfile /tmp/hpl_hostfile hpcc
+
+<span class="c-gray"># Fetch GFLOPS result (look for WR line)</span>
+ssh admin@10.10.10.21 <span class="c-green">"grep 'WR' ~/hpccoutf.txt | tail -1"</span>
+
+<span class="c-gray"># Example output:</span>
+<span class="c-green">WR11C2R4    15000   128     4     8    421.72    1.156e+01</span>
+<span class="c-gray">#                                                 ↑ GFLOPS</span></pre>
+    </div>
+
+    <div class="finding info">
+      <h4>ℹ️ Result Location</h4>
+      <p>HPL writes results to <code>~/hpccoutf.txt</code> on the first MPI rank node (pi3-01). 
+      The <b>WR</b> line contains the GFLOPS result — the last number on that line.</p>
+    </div>
+  </div>
+
+  <!-- Results Overview -->
+  <div class="section">
+    <h2 class="orange">Results Overview</h2>
+    <p>Full interactive results with min/max/mean per configuration are available on the results page. Below is a summary with chart placeholders.</p>
+
+    <div class="img-block">
+      <img src="hpl_gflops_bar_chart.png" alt="HPL GFLOPS Bar Chart"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="img-placeholder">
+        <span class="img-icon">📊</span>
+        <span class="img-name">hpl_gflops_bar_chart.png</span>
+        <span class="img-desc">GFLOPS vs Core Count — Bar Chart (1 to 32 cores)</span>
+      </div>
+      <div class="img-caption">Figure 1 — HPL GFLOPS across 7 core counts. Note the dip at 8 cores due to inter-node communication overhead.</div>
+    </div>
+
+    <div class="img-block">
+      <img src="hpl_efficiency_chart.png" alt="HPL Efficiency Chart"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="img-placeholder">
+        <span class="img-icon">📈</span>
+        <span class="img-name">hpl_efficiency_chart.png</span>
+        <span class="img-desc">Actual GFLOPS vs Ideal Linear Scaling — Line Chart</span>
+      </div>
+      <div class="img-caption">Figure 2 — Actual GFLOPS vs ideal linear scaling. Shows communication bottleneck at 8 cores.</div>
+    </div>
+  </div>
+
+  <!-- Key Findings -->
+  <div class="section">
+    <h2>Key Findings</h2>
+
+    <div class="finding">
+      <h4>✅ Peak: 11.92 GFLOPS at 32 cores</h4>
+      <p>Theoretical peak for 32× ARM Cortex-A53 at 1.4GHz = ~89.6 GFLOPS. 
+      Achieved efficiency: 13.3% — typical for ARM single-board computer clusters 
+      and consistent with Prof. Baun's published research on Pi clusters.</p>
+    </div>
+    <div class="finding warn">
+      <h4>⚠️ Performance dip at 8 cores</h4>
+      <p>GFLOPS drops from 5.082 (4 cores, 1 node) to 4.576 (8 cores, 2 nodes) 
+      when crossing the first node boundary. LU factorization requires constant 
+      inter-node row/column exchanges — the communication cost exceeds the 
+      benefit of additional cores at this problem size.</p>
+    </div>
+    <div class="finding bad">
+      <h4>❌ Pi3-02 power instability</h4>
+      <p>Pi3-02 spontaneously reboots under sustained HPL load with N≥8000. 
+      Confirmed as a power supply limitation. Mitigated by placing pi3-02 last 
+      in the node order — only participates at 32 cores.</p>
+    </div>
+    <div class="finding info">
+      <h4>🔍 Amdahl's Law visible at 8 cores</h4>
+      <p>The dip at 8 cores demonstrates Amdahl's Law — the serial fraction 
+      (inter-node LU communication) dominates when first crossing a node boundary. 
+      Performance recovers at 16+ cores as larger N values increase the parallel fraction.</p>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <a href="task1.html" class="nav-btn prev">← Task 1 — Infrastructure</a>
+    <a href="task3.html" class="nav-btn next">Task 3 — MPI →</a>
+  </div>
+
+</div>
+
+<footer>
+  EdgeGuard SS2026 · Frankfurt University of Applied Sciences · Prof. Dr. Christian Baun ·
+  <a href="index.html">← Back to Docs</a> ·
+  <a href="https://github.com/nauman-iftikhar/Edgeguard">GitHub</a> ·
+  Presentation: July 16, 2026 · Room 1-234 · 14:15–17:15
+</footer>
+
+</body>
+</html>

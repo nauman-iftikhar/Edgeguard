@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bonus — Auto-Scaler | EdgeGuard SS2026</title>
+<style>
+  :root {
+    --bg: #f0f4f8; --surface: #ffffff; --surface2: #f8fafc;
+    --border: #e2e8f0; --accent: #0d9e75; --accent2: #2563a8;
+    --text: #0f172a; --text2: #64748b; --text3: #475569;
+    --warn: #d97706; --danger: #dc2626;
+    --code-bg: #1e293b; --code-text: #e2e8f0;
+    --gold: #b45309;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+
+  header { background: #1a3a5c; padding: 0 40px; border-bottom: 3px solid #f59e0b; }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 36px 0 32px; }
+  .breadcrumb { font-size: 0.78rem; color: #93c5fd; margin-bottom: 12px; }
+  .breadcrumb a { color: #6ee7c7; text-decoration: none; }
+  .task-eyebrow { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: #fde68a; margin-bottom: 10px; }
+  header h1 { font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-bottom: 10px; }
+  header p { color: #93c5fd; font-size: 0.95rem; max-width: 700px; margin-bottom: 18px; }
+  .header-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge { font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; background: rgba(255,255,255,0.08); }
+  .badge.gold { border-color: #fde68a; color: #fde68a; }
+  .badge.lead { border-color: #93c5fd; color: #93c5fd; background: rgba(147,197,253,0.1); }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 48px 40px; }
+
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px; margin-bottom: 24px; }
+  .section h2 { font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .section h2::before { content: ''; display: inline-block; width: 3px; height: 18px; background: var(--accent); border-radius: 2px; }
+  .section h2.blue::before { background: var(--accent2); }
+  .section h2.orange::before { background: var(--warn); }
+  .section h2.gold::before { background: #f59e0b; }
+  .section h2.red::before { background: var(--danger); }
+  .section p { font-size: 0.9rem; color: var(--text3); line-height: 1.7; margin-top: 8px; }
+  .section h3 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
+
+  .code-wrap { background: var(--code-bg); border-radius: 8px; overflow: hidden; margin: 14px 0; }
+  .code-header { background: #0f172a; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .code-lang { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; }
+  .code-title { font-size: 0.78rem; color: #94a3b8; }
+  pre { padding: 16px; overflow-x: auto; color: var(--code-text); line-height: 1.7; font-family: 'Courier New', monospace; font-size: 0.82rem; }
+  .c-green { color: #4ade80; } .c-blue { color: #93c5fd; } .c-gray { color: #64748b; }
+  .c-yellow { color: #fde68a; } .c-orange { color: #fdba74; } .c-red { color: #fca5a5; }
+
+  .finding { border-left: 3px solid var(--accent); background: #f0fdf4; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .finding.warn { border-color: var(--warn); background: #fffbeb; }
+  .finding.bad  { border-color: var(--danger); background: #fef2f2; }
+  .finding.info { border-color: var(--accent2); background: #eff6ff; }
+  .finding.gold { border-color: #f59e0b; background: #fffbeb; }
+  .finding h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+  .finding p  { font-size: 0.85rem; color: #444; margin: 0; line-height: 1.6; }
+
+  /* Flow diagram */
+  .flow { display: flex; flex-direction: column; gap: 0; margin: 16px 0; }
+  .flow-step { display: flex; gap: 14px; }
+  .flow-line { display: flex; flex-direction: column; align-items: center; }
+  .flow-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: white; flex-shrink: 0; }
+  .flow-connector { width: 2px; background: var(--border); flex: 1; min-height: 16px; margin: 2px 0; }
+  .flow-content { padding-bottom: 18px; flex: 1; }
+  .flow-content h4 { font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .flow-content p { font-size: 0.85rem; color: var(--text3); margin: 0; line-height: 1.6; }
+
+  /* Comparison table */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 14px 0; }
+  .data-table th { background: #1a3a5c; color: white; padding: 9px 14px; text-align: left; font-size: 0.78rem; text-transform: uppercase; }
+  .data-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--text3); vertical-align: top; }
+  .data-table tr:hover td { background: var(--surface2); }
+  .data-table td b { color: var(--text); }
+  .good { color: var(--accent) !important; font-weight: 700; }
+
+  /* Unique points */
+  .unique-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 16px 0; }
+  .unique-card { background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fde68a; border-radius: 10px; padding: 18px; }
+  .unique-card .icon { font-size: 1.4rem; margin-bottom: 8px; }
+  .unique-card h4 { font-size: 0.88rem; font-weight: 700; color: #92400e; margin-bottom: 6px; }
+  .unique-card p { font-size: 0.82rem; color: #78350f; margin: 0; line-height: 1.5; }
+
+  .bottom-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+  .nav-btn { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 0.88rem; padding: 10px 20px; border-radius: 8px; font-weight: 600; transition: all 0.15s; }
+  .nav-btn.prev { color: var(--text2); border: 1px solid var(--border); background: var(--surface); }
+  .nav-btn.prev:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn.next { color: #1a1a2e; background: #f59e0b; border: 1px solid #f59e0b; }
+  .nav-btn.next:hover { background: #d97706; border-color: #d97706; }
+
+  footer { background: #1a3a5c; border-top: 3px solid #f59e0b; padding: 24px 40px; text-align: center; font-size: 0.82rem; color: #93c5fd; }
+  footer a { color: #6ee7c7; text-decoration: none; }
+
+  @media (max-width: 768px) {
+    header, footer { padding: 0 20px; }
+    .container { padding: 24px 20px; }
+    header h1 { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="breadcrumb"><a href="index.html">← EdgeGuard Docs</a> / Bonus</div>
+    <div class="task-eyebrow">⭐ Bonus Task · Auto-Scaler</div>
+    <h1>Elastic Auto-Scaler</h1>
+    <p>A custom-built Prometheus-driven auto-scaler that dynamically adds and removes the Raspberry Pi 4 as a k3s compute node based on real-time cluster CPU load.</p>
+    <div class="header-meta">
+      <span class="badge lead">👤 Lead: Nauman Iftikhar</span>
+      <span class="badge gold">⭐ Bonus Feature</span>
+      <span class="badge">Prometheus · k3s · Python · Telegram</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Overview -->
+  <div class="section">
+    <h2>Overview</h2>
+    <p>
+      Auto-scaling is one of the defining features of modern cloud computing — the ability 
+      for a system to automatically add or remove compute resources based on demand, 
+      without human intervention. In production cloud environments (AWS, GCP, Azure), 
+      this is handled by managed services. We built our own from scratch on a 
+      Raspberry Pi cluster.
+    </p>
+    <p>
+      The EdgeGuard auto-scaler monitors cluster CPU utilization via Prometheus every 10 seconds. 
+      When average CPU across all Pi3 nodes exceeds a configurable threshold, it automatically 
+      executes the k3s node join sequence on the <b>Raspberry Pi 4</b> — adding 4 additional 
+      ARM cores to the cluster within ~90 seconds. When CPU drops back below the threshold 
+      for a sustained period, the Pi4 gracefully drains its workloads and leaves the cluster.
+    </p>
+
+    <div class="finding gold">
+      <h4>⭐ Why this is significant</h4>
+      <p>Most student projects deploy a static cluster and leave it running. We implemented 
+      a <b>dynamic elastic cluster</b> — the compute capacity literally changes in real time 
+      based on load. This is exactly how cloud providers charge by the hour — resources 
+      exist only when needed. We demonstrated this concept on physical hardware with 
+      real Kubernetes orchestration, not a simulation.</p>
+    </div>
+  </div>
+
+  <!-- Why it is unique -->
+  <div class="section">
+    <h2 class="gold">Why This Is Unique</h2>
+
+    <div class="unique-grid">
+      <div class="unique-card">
+        <div class="icon">🏗️</div>
+        <h4>Built from scratch — no cloud service</h4>
+        <p>AWS Auto Scaling, GCP Managed Instance Groups, Azure VMSS are all managed services. We wrote every line of the scaling logic ourselves in Python — Prometheus query, kubectl commands, state machine, cooldown timers.</p>
+      </div>
+      <div class="unique-card">
+        <div class="icon">🖥️</div>
+        <h4>Physical hardware joins and leaves</h4>
+        <p>This is not a virtual machine spawning in seconds. A real physical Raspberry Pi 4 board is added to the Kubernetes cluster — it boots k3s-agent, registers with the control plane, and becomes schedulable. You can see it with kubectl get nodes.</p>
+      </div>
+      <div class="unique-card">
+        <div class="icon">📊</div>
+        <h4>Real Prometheus metrics drive decisions</h4>
+        <p>Scaling decisions are based on actual CPU data collected by Node Exporter from all 8 Pi3 nodes and averaged by Prometheus. Not a synthetic trigger — real cluster load from inference, benchmarks, or k3s pod workloads.</p>
+      </div>
+      <div class="unique-card">
+        <div class="icon">⚡</div>
+        <h4>Configurable threshold from the UI</h4>
+        <p>The scaling threshold is not hardcoded. Any authorized user can change it live from the EdgeGuard frontend — the new value takes effect on the next polling cycle with no restart required.</p>
+      </div>
+      <div class="unique-card">
+        <div class="icon">🔄</div>
+        <h4>Graceful drain before leaving</h4>
+        <p>When Pi4 needs to leave, the auto-scaler first cordons the node (marks it unschedulable), drains all pods to other nodes, waits for completion, then removes it from the cluster. No workload disruption.</p>
+      </div>
+      <div class="unique-card">
+        <div class="icon">📱</div>
+        <h4>Telegram alerts on every scale event</h4>
+        <p>Every scale-out and scale-in event sends a Telegram notification to the team group with the trigger reason, current CPU, and Pi4 join/leave status.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="section">
+    <h2 class="blue">How It Works — Step by Step</h2>
+
+    <h3>Scale-Out (Pi4 Joins)</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot" style="background:#2563a8">1</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-content">
+          <h4>Prometheus query — cluster CPU average</h4>
+          <p>Every 10 seconds the auto-scaler queries Prometheus for the average CPU across all Pi3 nodes. If the average exceeds the threshold (default 80%) for 3 consecutive checks (~30 seconds), scale-out is triggered. The 3-check requirement prevents false triggers from momentary CPU spikes.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot" style="background:#d97706">2</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-content">
+          <h4>Check Pi4 is not already in cluster</h4>
+          <p>The auto-scaler checks if sensor-node (Pi4) is already registered in k3s. If it is, no action is taken. If not, the join sequence begins.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot" style="background:#0d9e75">3</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-content">
+          <h4>SSH to Pi4 and start k3s-agent</h4>
+          <p>The Pi5 backend SSHs to Pi4 (10.10.10.40) and starts the k3s-agent service with the cluster token and Pi5 server address. The k3s-agent on Pi4 contacts the Pi5 control plane and requests to join.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot" style="background:#7c3aed">4</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-content">
+          <h4>Wait for node to become Ready</h4>
+          <p>Poll <code>kubectl get node sensor-node</code> every 5 seconds until status is Ready. Typically takes 60–90 seconds for the Pi4 to fully join the cluster and pass health checks.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot" style="background:#0d9e75">5</div>
+        </div>
+        <div class="flow-content">
+          <h4>Send Telegram alert + log event</h4>
+          <p>Once Pi4 is Ready, send a Telegram message to the team and log the event with timestamp and trigger CPU value. The auto-scaler then enters a cooldown period (5 minutes) before it can scale again.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>Scale-In (Pi4 Leaves)</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot" style="background:#2563a8">1</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-content">
+          <h4>CPU drops below threshold</h4>
+          <p>When cluster CPU drops below the threshold for 3 consecutive checks after Pi4 has joined, scale-in is triggered. Same sustained-check requirement to avoid flapping.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot" style="background:#d97706">2</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-content">
+          <h4>Cordon Pi4 — mark unschedulable</h4>
+          <p><code>kubectl cordon sensor-node</code> — prevents any new pods from being scheduled onto Pi4. Existing pods continue running until drained.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot" style="background:#dc2626">3</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-content">
+          <h4>Drain Pi4 — move all pods away</h4>
+          <p><code>kubectl drain sensor-node --ignore-daemonsets --delete-emptydir-data</code> — evicts all pods running on Pi4 and reschedules them on Pi3 nodes. k3s waits until all pods have migrated before completing.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot" style="background:#0d9e75">4</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-content">
+          <h4>Remove Pi4 from cluster</h4>
+          <p><code>kubectl delete node sensor-node</code> — removes Pi4 from the k3s node registry. Then SSH to Pi4 and stop k3s-agent so it doesn't try to rejoin automatically.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot" style="background:#7c3aed">5</div>
+        </div>
+        <div class="flow-content">
+          <h4>Send Telegram alert + log event</h4>
+          <p>Notify team that Pi4 has left the cluster, with downtime duration and reason. Enter cooldown period before next possible scale event.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Implementation -->
+  <div class="section">
+    <h2>Full Implementation</h2>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><span class="code-title">auto_scaler.py — complete implementation</span></div>
+      <pre><span class="c-blue">import</span> threading
+<span class="c-blue">import</span> subprocess
+<span class="c-blue">import</span> requests
+<span class="c-blue">import</span> time
+<span class="c-blue">from</span> datetime <span class="c-blue">import</span> datetime
+
+PROMETHEUS_URL   = <span class="c-green">"http://prometheus-service:9090"</span>
+PI4_IP           = <span class="c-green">"10.10.10.40"</span>
+PI4_NODE_NAME    = <span class="c-green">"sensor-node"</span>
+K3S_TOKEN        = <span class="c-green">"your_k3s_token"</span>
+K3S_SERVER       = <span class="c-green">"https://10.10.10.1:6443"</span>
+POLL_INTERVAL    = <span class="c-orange">10</span>    <span class="c-gray"># seconds between Prometheus checks</span>
+COOLDOWN_SECONDS = <span class="c-orange">300</span>   <span class="c-gray"># 5 min cooldown after any scale event</span>
+SUSTAINED_CHECKS = <span class="c-orange">3</span>    <span class="c-gray"># consecutive checks before scaling</span>
+
+<span class="c-gray"># Shared state — readable by /api/autoscaler/status endpoint</span>
+autoscaler_state = {
+    <span class="c-green">"threshold"</span>:     <span class="c-orange">80.0</span>,     <span class="c-gray"># CPU % to trigger scale-out</span>
+    <span class="c-green">"current_cpu"</span>:   <span class="c-orange">0.0</span>,
+    <span class="c-green">"pi4_joined"</span>:    <span class="c-orange">False</span>,
+    <span class="c-green">"last_event"</span>:    <span class="c-orange">None</span>,
+    <span class="c-green">"event_log"</span>:     [],
+    <span class="c-green">"in_cooldown"</span>:   <span class="c-orange">False</span>,
+    <span class="c-green">"scale_out_count"</span>: <span class="c-orange">0</span>,
+    <span class="c-green">"scale_in_count"</span>:  <span class="c-orange">0</span>,
+}
+high_cpu_streak  = <span class="c-orange">0</span>
+low_cpu_streak   = <span class="c-orange">0</span>
+
+<span class="c-blue">def</span> <span class="c-green">get_cluster_cpu</span>():
+    <span class="c-gray"># PromQL: average CPU usage across all Pi3 nodes</span>
+    query = (<span class="c-green">'100 - (avg(rate(node_cpu_seconds_total'</span>
+             <span class="c-green">'{mode="idle",job="node-exporter"}'</span>
+             <span class="c-green">'[1m])) * 100)'</span>)
+    r = requests.get(
+        <span class="c-green">f"{PROMETHEUS_URL}/api/v1/query"</span>,
+        params={<span class="c-green">"query"</span>: query}, timeout=<span class="c-orange">5</span>
+    )
+    result = r.json()[<span class="c-green">"data"</span>][<span class="c-green">"result"</span>]
+    <span class="c-blue">return</span> float(result[<span class="c-orange">0</span>][<span class="c-green">"value"</span>][<span class="c-orange">1</span>]) <span class="c-blue">if</span> result <span class="c-blue">else</span> <span class="c-orange">0.0</span>
+
+<span class="c-blue">def</span> <span class="c-green">pi4_in_cluster</span>():
+    result = subprocess.run(
+        [<span class="c-green">"kubectl"</span>, <span class="c-green">"get"</span>, <span class="c-green">"node"</span>, PI4_NODE_NAME, <span class="c-green">"--no-headers"</span>],
+        capture_output=<span class="c-orange">True</span>, text=<span class="c-orange">True</span>
+    )
+    <span class="c-blue">return</span> result.returncode == <span class="c-orange">0</span>
+
+<span class="c-blue">def</span> <span class="c-green">scale_out</span>():
+    <span class="c-blue">global</span> high_cpu_streak
+    log_event(<span class="c-green">f"⚡ Scale-out triggered — CPU at {autoscaler_state['current_cpu']:.1f}%"</span>)
+
+    <span class="c-gray"># SSH to Pi4 and start k3s-agent</span>
+    subprocess.run([
+        <span class="c-green">"ssh"</span>, <span class="c-green">f"admin@{PI4_IP}"</span>,
+        <span class="c-green">f"sudo K3S_URL={K3S_SERVER} K3S_TOKEN={K3S_TOKEN} "</span>
+        <span class="c-green">f"sh -c 'systemctl start k3s-agent'"</span>
+    ], timeout=<span class="c-orange">30</span>)
+
+    <span class="c-gray"># Wait for Pi4 to become Ready (up to 120 seconds)</span>
+    <span class="c-blue">for</span> _ <span class="c-blue">in</span> range(<span class="c-orange">24</span>):
+        time.sleep(<span class="c-orange">5</span>)
+        result = subprocess.run(
+            [<span class="c-green">"kubectl"</span>, <span class="c-green">"get"</span>, <span class="c-green">"node"</span>, PI4_NODE_NAME,
+             <span class="c-green">"--no-headers"</span>, <span class="c-green">"-o"</span>, <span class="c-green">"custom-columns=STATUS:.status.conditions[-1].type"</span>],
+            capture_output=<span class="c-orange">True</span>, text=<span class="c-orange">True</span>
+        )
+        <span class="c-blue">if</span> <span class="c-green">"Ready"</span> <span class="c-blue">in</span> result.stdout:
+            autoscaler_state[<span class="c-green">"pi4_joined"</span>] = <span class="c-orange">True</span>
+            autoscaler_state[<span class="c-green">"scale_out_count"</span>] += <span class="c-orange">1</span>
+            log_event(<span class="c-green">"✅ Pi4 joined cluster — Ready"</span>)
+            send_telegram(
+                <span class="c-green">f"🔥 &lt;b&gt;AUTO-SCALER: Scale Out&lt;/b&gt;\n\n"</span>
+                <span class="c-green">f"📊 Cluster CPU was {autoscaler_state['current_cpu']:.1f}%\n"</span>
+                <span class="c-green">f"➕ Pi4 sensor-node joined k3s cluster\n"</span>
+                <span class="c-green">f"🖥️ Cluster now has {8+1} active nodes"</span>
+            )
+            high_cpu_streak = <span class="c-orange">0</span>
+            enter_cooldown()
+            <span class="c-blue">return</span>
+
+    log_event(<span class="c-green">"❌ Pi4 join timed out after 120s"</span>)
+
+<span class="c-blue">def</span> <span class="c-green">scale_in</span>():
+    <span class="c-blue">global</span> low_cpu_streak
+    log_event(<span class="c-green">f"📉 Scale-in triggered — CPU at {autoscaler_state['current_cpu']:.1f}%"</span>)
+
+    <span class="c-gray"># Cordon — prevent new pods from scheduling on Pi4</span>
+    subprocess.run([<span class="c-green">"kubectl"</span>, <span class="c-green">"cordon"</span>, PI4_NODE_NAME], timeout=<span class="c-orange">30</span>)
+
+    <span class="c-gray"># Drain — evict all pods gracefully</span>
+    subprocess.run([
+        <span class="c-green">"kubectl"</span>, <span class="c-green">"drain"</span>, PI4_NODE_NAME,
+        <span class="c-green">"--ignore-daemonsets"</span>,
+        <span class="c-green">"--delete-emptydir-data"</span>,
+        <span class="c-green">"--timeout=120s"</span>
+    ], timeout=<span class="c-orange">150</span>)
+
+    <span class="c-gray"># Remove from cluster</span>
+    subprocess.run([<span class="c-green">"kubectl"</span>, <span class="c-green">"delete"</span>, <span class="c-green">"node"</span>, PI4_NODE_NAME], timeout=<span class="c-orange">30</span>)
+
+    <span class="c-gray"># Stop k3s-agent on Pi4</span>
+    subprocess.run([
+        <span class="c-green">"ssh"</span>, <span class="c-green">f"admin@{PI4_IP}"</span>,
+        <span class="c-green">"sudo systemctl stop k3s-agent"</span>
+    ], timeout=<span class="c-orange">15</span>)
+
+    autoscaler_state[<span class="c-green">"pi4_joined"</span>] = <span class="c-orange">False</span>
+    autoscaler_state[<span class="c-green">"scale_in_count"</span>] += <span class="c-orange">1</span>
+    log_event(<span class="c-green">"✅ Pi4 left cluster gracefully"</span>)
+    send_telegram(
+        <span class="c-green">f"📉 &lt;b&gt;AUTO-SCALER: Scale In&lt;/b&gt;\n\n"</span>
+        <span class="c-green">f"📊 Cluster CPU dropped to {autoscaler_state['current_cpu']:.1f}%\n"</span>
+        <span class="c-green">f"➖ Pi4 sensor-node left k3s cluster\n"</span>
+        <span class="c-green">f"🖥️ Cluster back to 8 Pi3 nodes"</span>
+    )
+    low_cpu_streak = <span class="c-orange">0</span>
+    enter_cooldown()
+
+<span class="c-blue">def</span> <span class="c-green">enter_cooldown</span>():
+    autoscaler_state[<span class="c-green">"in_cooldown"</span>] = <span class="c-orange">True</span>
+    threading.Timer(COOLDOWN_SECONDS,
+        <span class="c-blue">lambda</span>: autoscaler_state.update({<span class="c-green">"in_cooldown"</span>: <span class="c-orange">False</span>})
+    ).start()
+
+<span class="c-blue">def</span> <span class="c-green">log_event</span>(message):
+    entry = {<span class="c-green">"time"</span>: datetime.now().isoformat(), <span class="c-green">"message"</span>: message}
+    autoscaler_state[<span class="c-green">"event_log"</span>].insert(<span class="c-orange">0</span>, entry)
+    autoscaler_state[<span class="c-green">"event_log"</span>] = autoscaler_state[<span class="c-green">"event_log"</span>][:<span class="c-orange">50</span>]  <span class="c-gray"># keep last 50</span>
+    print(<span class="c-green">f"[AutoScaler] {message}"</span>)
+
+<span class="c-blue">def</span> <span class="c-green">autoscaler_loop</span>():
+    <span class="c-blue">global</span> high_cpu_streak, low_cpu_streak
+    <span class="c-blue">while</span> <span class="c-orange">True</span>:
+        <span class="c-blue">try</span>:
+            cpu = get_cluster_cpu()
+            autoscaler_state[<span class="c-green">"current_cpu"</span>] = cpu
+            threshold = autoscaler_state[<span class="c-green">"threshold"</span>]
+            in_cooldown = autoscaler_state[<span class="c-green">"in_cooldown"</span>]
+            pi4_joined  = autoscaler_state[<span class="c-green">"pi4_joined"</span>]
+
+            <span class="c-blue">if not</span> in_cooldown:
+                <span class="c-blue">if</span> cpu > threshold <span class="c-blue">and not</span> pi4_joined:
+                    high_cpu_streak += <span class="c-orange">1</span>
+                    low_cpu_streak   = <span class="c-orange">0</span>
+                    <span class="c-blue">if</span> high_cpu_streak >= SUSTAINED_CHECKS:
+                        scale_out()
+                <span class="c-blue">elif</span> cpu < (threshold - <span class="c-orange">10</span>) <span class="c-blue">and</span> pi4_joined:
+                    <span class="c-gray"># 10% hysteresis — scale in at threshold-10 to avoid flapping</span>
+                    low_cpu_streak  += <span class="c-orange">1</span>
+                    high_cpu_streak  = <span class="c-orange">0</span>
+                    <span class="c-blue">if</span> low_cpu_streak >= SUSTAINED_CHECKS:
+                        scale_in()
+                <span class="c-blue">else</span>:
+                    high_cpu_streak = <span class="c-orange">0</span>
+                    low_cpu_streak  = <span class="c-orange">0</span>
+
+        <span class="c-blue">except</span> Exception <span class="c-blue">as</span> e:
+            print(<span class="c-green">f"[AutoScaler] Error: {e}"</span>)
+
+        time.sleep(POLL_INTERVAL)
+
+<span class="c-gray"># Start auto-scaler when Flask app starts</span>
+scaler_thread = threading.Thread(target=autoscaler_loop, daemon=<span class="c-orange">True</span>)
+scaler_thread.start()</pre>
+    </div>
+  </div>
+
+  <!-- API Endpoint -->
+  <div class="section">
+    <h2 class="orange">API Endpoint & Frontend Integration</h2>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><span class="code-title">/api/autoscaler/status — Flask endpoint</span></div>
+      <pre>@app.route(<span class="c-green">'/api/autoscaler/status'</span>, methods=[<span class="c-green">'GET'</span>])
+@token_required
+<span class="c-blue">def</span> <span class="c-green">get_autoscaler_status</span>():
+    <span class="c-blue">return</span> jsonify(autoscaler_state)
+
+@app.route(<span class="c-green">'/api/autoscaler/threshold'</span>, methods=[<span class="c-green">'POST'</span>])
+@token_required
+<span class="c-blue">def</span> <span class="c-green">set_threshold</span>():
+    data = request.get_json()
+    new_threshold = float(data.get(<span class="c-green">'threshold'</span>, <span class="c-orange">80</span>))
+    <span class="c-blue">if</span> <span class="c-orange">10</span> <= new_threshold <= <span class="c-orange">95</span>:
+        autoscaler_state[<span class="c-green">'threshold'</span>] = new_threshold
+        log_event(<span class="c-green">f"⚙️ Threshold changed to {new_threshold}%"</span>)
+        <span class="c-blue">return</span> jsonify({<span class="c-green">'threshold'</span>: new_threshold})
+    <span class="c-blue">return</span> jsonify({<span class="c-green">'error'</span>: <span class="c-green">'Threshold must be 10–95'</span>}), <span class="c-orange">400</span></pre>
+    </div>
+
+    <h3>What the Frontend Shows</h3>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>UI Element</th><th>Data Source</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><b>CPU Gauge</b></td><td>autoscaler_state.current_cpu</td><td>Live cluster average CPU — updates every 10s</td></tr>
+          <tr><td><b>Threshold Slider</b></td><td>autoscaler_state.threshold</td><td>Adjustable 10–95% — POST to /api/autoscaler/threshold</td></tr>
+          <tr><td><b>Pi4 Status Badge</b></td><td>autoscaler_state.pi4_joined</td><td>Shows "In Cluster" (green) or "Standby" (grey)</td></tr>
+          <tr><td><b>Scale Event Log</b></td><td>autoscaler_state.event_log</td><td>Last 50 events with timestamps — scale-out, scale-in, errors</td></tr>
+          <tr><td><b>Scale Count</b></td><td>scale_out_count / scale_in_count</td><td>Total number of scale events since backend started</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Key design decisions -->
+  <div class="section">
+    <h2>Key Design Decisions</h2>
+
+    <div class="finding gold">
+      <h4>⭐ Hysteresis — scale in at threshold minus 10%</h4>
+      <p>Without hysteresis, the system would flap — Pi4 joins at 80% CPU, load drops to 79%, 
+      Pi4 leaves, load rises to 80%, Pi4 joins again, in a rapid loop. 
+      We scale out at 80% but only scale in when CPU drops to 70% (threshold - 10%). 
+      This 10% hysteresis band prevents flapping and gives the newly joined Pi4 time 
+      to absorb workload and genuinely reduce cluster CPU.</p>
+    </div>
+
+    <div class="finding info">
+      <h4>🔍 Sustained checks — 3 consecutive readings before acting</h4>
+      <p>A single CPU spike to 85% does not trigger scale-out. Three consecutive readings 
+      above threshold (~30 seconds of sustained high load) are required. This prevents 
+      unnecessary scale events from brief benchmark spikes, page refreshes, 
+      or momentary inference bursts.</p>
+    </div>
+
+    <div class="finding">
+      <h4>✅ Cooldown — 5 minutes between scale events</h4>
+      <p>After any scale event (in or out), the auto-scaler enters a 5-minute cooldown. 
+      This gives the cluster time to stabilize after the topology change before 
+      making another scaling decision. Without cooldown, the system could thrash 
+      between 8-node and 9-node configurations continuously.</p>
+    </div>
+
+    <div class="finding warn">
+      <h4>⚠️ Pi4 join time is ~90 seconds</h4>
+      <p>The Pi4 is a physical board that needs to boot k3s-agent, register with the 
+      control plane, pass readiness checks, and receive pod scheduling. This takes 
+      60–90 seconds. During this window the cluster is still running at high CPU 
+      on 8 nodes — the auto-scaler waits for Ready before logging success.</p>
+    </div>
+  </div>
+
+  <!-- Key Findings -->
+  <div class="section">
+    <h2>Key Findings</h2>
+
+    <div class="finding">
+      <h4>✅ Pi4 joins successfully in 60–90 seconds</h4>
+      <p>Tested multiple times under real benchmark load. The k3s-agent on Pi4 consistently 
+      reaches Ready state within 90 seconds of the SSH trigger command.</p>
+    </div>
+    <div class="finding">
+      <h4>✅ Graceful drain works — zero pod disruption on scale-in</h4>
+      <p>kubectl drain successfully migrates all non-daemonset pods to Pi3 nodes before 
+      Pi4 leaves. No request errors observed in the backend during scale-in events 
+      due to the anti-affinity rules ensuring the backend replica was never on Pi4.</p>
+    </div>
+    <div class="finding gold">
+      <h4>⭐ Demonstrates real cloud computing concepts</h4>
+      <p>This implementation covers: metrics-driven scaling decisions, hysteresis to prevent 
+      flapping, graceful node drain, cooldown periods, and event logging — the same 
+      concepts used in production auto-scalers at every major cloud provider. 
+      Built entirely with open-source tools on physical hardware.</p>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <a href="task9.html" class="nav-btn prev">← Task 9 — Telegram Bot</a>
+    <a href="index.html" class="nav-btn next">Back to Index →</a>
+  </div>
+
+</div>
+
+<footer>
+  EdgeGuard SS2026 · Frankfurt University of Applied Sciences · Prof. Dr. Christian Baun ·
+  <a href="index.html">← Back to Docs</a> ·
+  <a href="https://github.com/nauman-iftikhar/Edgeguard">GitHub</a> ·
+  Presentation: July 16, 2026 · Room 1-234 · 14:15–17:15
+</footer>
+
+</body>
+</html>

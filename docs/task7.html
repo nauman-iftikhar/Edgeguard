@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task 7 — Backend | EdgeGuard SS2026</title>
+<style>
+  :root {
+    --bg: #f0f4f8; --surface: #ffffff; --surface2: #f8fafc;
+    --border: #e2e8f0; --accent: #0d9e75; --accent2: #2563a8;
+    --text: #0f172a; --text2: #64748b; --text3: #475569;
+    --warn: #d97706; --danger: #dc2626;
+    --code-bg: #1e293b; --code-text: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+
+  header { background: #1a3a5c; padding: 0 40px; border-bottom: 3px solid var(--accent); }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 36px 0 32px; }
+  .breadcrumb { font-size: 0.78rem; color: #93c5fd; margin-bottom: 12px; }
+  .breadcrumb a { color: #6ee7c7; text-decoration: none; }
+  .task-eyebrow { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: #6ee7c7; margin-bottom: 10px; }
+  header h1 { font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-bottom: 10px; }
+  header p { color: #93c5fd; font-size: 0.95rem; max-width: 700px; margin-bottom: 18px; }
+  .header-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge { font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; background: rgba(255,255,255,0.08); }
+  .badge.green { border-color: #6ee7c7; color: #6ee7c7; }
+  .badge.lead  { border-color: #93c5fd; color: #93c5fd; background: rgba(147,197,253,0.1); }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 48px 40px; }
+
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px; margin-bottom: 24px; }
+  .section h2 { font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .section h2::before { content: ''; display: inline-block; width: 3px; height: 18px; background: var(--accent); border-radius: 2px; }
+  .section h2.blue::before { background: var(--accent2); }
+  .section h2.orange::before { background: var(--warn); }
+  .section h2.red::before { background: var(--danger); }
+  .section h2.purple::before { background: #7c3aed; }
+  .section p { font-size: 0.9rem; color: var(--text3); line-height: 1.7; margin-top: 8px; }
+  .section h3 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
+
+  .code-wrap { background: var(--code-bg); border-radius: 8px; overflow: hidden; margin: 14px 0; }
+  .code-header { background: #0f172a; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .code-lang { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; }
+  .code-title { font-size: 0.78rem; color: #94a3b8; }
+  pre { padding: 16px; overflow-x: auto; color: var(--code-text); line-height: 1.7; font-family: 'Courier New', monospace; font-size: 0.82rem; }
+  .c-green { color: #4ade80; } .c-blue { color: #93c5fd; } .c-gray { color: #64748b; }
+  .c-yellow { color: #fde68a; } .c-orange { color: #fdba74; } .c-purple { color: #c4b5fd; }
+  .c-red { color: #fca5a5; }
+
+  .finding { border-left: 3px solid var(--accent); background: #f0fdf4; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .finding.warn { border-color: var(--warn); background: #fffbeb; }
+  .finding.bad  { border-color: var(--danger); background: #fef2f2; }
+  .finding.info { border-color: var(--accent2); background: #eff6ff; }
+  .finding.purple { border-color: #7c3aed; background: #f5f3ff; }
+  .finding h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+  .finding p  { font-size: 0.85rem; color: #444; margin: 0; line-height: 1.6; }
+
+  /* Tech stack grid */
+  .stack-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; }
+  .stack-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .stack-card h4 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text2); margin-bottom: 8px; }
+  .stack-card .name { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .stack-card .desc { font-size: 0.8rem; color: var(--text3); line-height: 1.5; }
+
+  /* API endpoint table */
+  .api-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin: 14px 0; }
+  .api-table th { background: #1a3a5c; color: white; padding: 9px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .api-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--text3); vertical-align: top; }
+  .api-table tr:hover td { background: var(--surface2); }
+  .api-table td:first-child { font-family: 'Courier New', monospace; color: var(--text); white-space: nowrap; }
+  .method { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; margin-right: 6px; }
+  .get    { background: #dcfce7; color: #166534; }
+  .post   { background: #dbeafe; color: #1e40af; }
+  .delete { background: #fee2e2; color: #991b1b; }
+  .put    { background: #fef9c3; color: #854d0e; }
+  .auth-req { font-size: 0.72rem; color: var(--warn); }
+
+  /* DB schema */
+  .schema-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 14px 0; }
+  .schema-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .schema-card h4 { font-size: 0.82rem; font-weight: 700; color: var(--accent2); margin-bottom: 10px; font-family: 'Courier New', monospace; }
+  .schema-field { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
+  .schema-field:last-child { border: none; }
+  .field-name { color: var(--text); font-family: 'Courier New', monospace; }
+  .field-type { color: var(--text2); }
+  .field-pk { color: var(--accent); font-size: 0.7rem; font-weight: 700; }
+
+  /* HA diagram */
+  .ha-diagram { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin: 14px 0; font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--text3); line-height: 2; }
+
+  /* Image placeholder */
+  .img-block { margin: 20px 0; }
+  .img-block img { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; }
+  .img-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: var(--surface2); border: 2px dashed var(--border); border-radius: 8px; padding: 28px; text-align: center; }
+  .img-placeholder .img-icon { font-size: 1.8rem; }
+  .img-placeholder .img-name { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--accent2); font-weight: 700; }
+  .img-placeholder .img-desc { font-size: 0.78rem; color: var(--text2); }
+  .img-caption { font-size: 0.78rem; color: var(--text2); text-align: center; margin-top: 8px; font-style: italic; }
+  .img-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 14px 0; }
+  .data-table th { background: #1a3a5c; color: white; padding: 9px 14px; text-align: left; font-size: 0.78rem; text-transform: uppercase; }
+  .data-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--text3); }
+  .data-table tr:hover td { background: var(--surface2); }
+  .good { color: var(--accent) !important; font-weight: 700; }
+
+  .bottom-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+  .nav-btn { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 0.88rem; padding: 10px 20px; border-radius: 8px; font-weight: 600; transition: all 0.15s; }
+  .nav-btn.prev { color: var(--text2); border: 1px solid var(--border); background: var(--surface); }
+  .nav-btn.prev:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn.next { color: white; background: #1a3a5c; border: 1px solid #1a3a5c; }
+  .nav-btn.next:hover { background: var(--accent); border-color: var(--accent); }
+
+  footer { background: #1a3a5c; border-top: 3px solid var(--accent); padding: 24px 40px; text-align: center; font-size: 0.82rem; color: #93c5fd; }
+  footer a { color: #6ee7c7; text-decoration: none; }
+
+  @media (max-width: 768px) {
+    header, footer { padding: 0 20px; }
+    .container { padding: 24px 20px; }
+    header h1 { font-size: 1.6rem; }
+    .img-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="breadcrumb"><a href="index.html">← EdgeGuard Docs</a> / Task 7</div>
+    <div class="task-eyebrow">Task 7 · Backend</div>
+    <h1>Backend API Development</h1>
+    <p>Flask REST API deployed as 2 highly-available k3s replicas — handling authentication, alert storage, benchmark data, MinIO snapshots, and real-time cluster status.</p>
+    <div class="header-meta">
+      <span class="badge lead">👤 Lead: Muhammad Saleem, Muhammad Furqan Shafique</span>
+      <span class="badge green">✓ Complete</span>
+      <span class="badge">Flask · PostgreSQL · MinIO · JWT · k3s</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Overview -->
+  <div class="section">
+    <h2>Overview</h2>
+    <p>
+      The backend is the central nervous system of EdgeGuard. Every piece of data that flows 
+      through the system — camera alerts, benchmark results, user authentication, cluster status — 
+      passes through the Flask REST API. The React frontend talks exclusively to the backend; 
+      it never accesses the database or MinIO directly.
+    </p>
+    <p>
+      The backend is deployed as <b>2 replicas</b> in k3s with pod anti-affinity rules 
+      ensuring they run on different Pi3 nodes. If one node crashes or a pod fails, 
+      the other replica continues serving requests while k3s automatically reschedules 
+      the failed pod on a healthy node. This gives genuine high availability — 
+      not just redundancy on paper.
+    </p>
+
+    <div class="finding info">
+      <h4>ℹ️ Why Flask and not FastAPI or Django?</h4>
+      <p>Flask was chosen for its simplicity and minimal overhead. Django brings too much 
+      built-in structure for a focused API server. FastAPI is excellent but adds async 
+      complexity. Flask gives full control with minimal boilerplate — ideal for a 
+      student project where every team member needs to understand and modify the code.</p>
+    </div>
+  </div>
+
+  <!-- Tech Stack -->
+  <div class="section">
+    <h2 class="blue">Tech Stack</h2>
+
+    <div class="stack-grid">
+      <div class="stack-card">
+        <h4>API Framework</h4>
+        <div class="name">Flask</div>
+        <div class="desc">Python micro-framework. Handles HTTP routing, request parsing, and JSON responses. Lightweight and easy to extend.</div>
+      </div>
+      <div class="stack-card">
+        <h4>Database</h4>
+        <div class="name">PostgreSQL</div>
+        <div class="desc">Production-grade relational database. Migrated from SQLite early in the project for concurrent write support and k3s compatibility.</div>
+      </div>
+      <div class="stack-card">
+        <h4>Object Storage</h4>
+        <div class="name">MinIO</div>
+        <div class="desc">S3-compatible object store running on Pi5. Stores all alert snapshot images. Frontend fetches presigned URLs to display them.</div>
+      </div>
+      <div class="stack-card">
+        <h4>Authentication</h4>
+        <div class="name">JWT</div>
+        <div class="desc">JSON Web Tokens for stateless authentication. Every protected API endpoint requires a valid JWT in the Authorization header.</div>
+      </div>
+      <div class="stack-card">
+        <h4>Deployment</h4>
+        <div class="name">k3s + gunicorn</div>
+        <div class="desc">Flask runs under gunicorn (production WSGI server) inside a Docker container deployed as a k3s Deployment with 2 replicas.</div>
+      </div>
+      <div class="stack-card">
+        <h4>Metrics Source</h4>
+        <div class="name">Prometheus HTTP API</div>
+        <div class="desc">Backend queries Prometheus directly for per-node CPU and RAM to serve the /api/system/status endpoint.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Database -->
+  <div class="section">
+    <h2>Database — PostgreSQL</h2>
+
+    <h3>Why We Migrated from SQLite to PostgreSQL</h3>
+    <p>
+      The backend started with <b>SQLite</b> — a simple file-based database that requires 
+      no server setup. It worked well in early development but hit two critical limitations 
+      when deployed in k3s:
+    </p>
+
+    <div class="finding bad">
+      <h4>❌ SQLite Problem 1 — No concurrent writes</h4>
+      <p>SQLite uses file-level locking. When 2 Flask replicas try to write simultaneously 
+      (e.g. two alerts arriving at the same time), one write blocks or fails with 
+      "database is locked". In a high-availability setup with multiple replicas, 
+      this is unacceptable.</p>
+    </div>
+
+    <div class="finding bad">
+      <h4>❌ SQLite Problem 2 — File path in k3s</h4>
+      <p>SQLite stores data in a single file (e.g. <code>edgeguard.db</code>). In k3s, 
+      each pod gets its own filesystem — the two Flask replicas would each have their 
+      own separate database file with different data. Requests hitting replica 1 would 
+      not see data written by replica 2. The databases would diverge immediately.</p>
+    </div>
+
+    <div class="finding">
+      <h4>✅ Solution: PostgreSQL as a k3s StatefulSet</h4>
+      <p>PostgreSQL runs as a <b>3-replica StatefulSet</b> in k3s with a shared persistent 
+      volume. Both Flask replicas connect to the same PostgreSQL service endpoint. 
+      PostgreSQL handles concurrent writes with proper locking, transactions, and 
+      replication. All data is consistent regardless of which Flask replica handles the request.</p>
+    </div>
+
+    <h3>Database Schema</h3>
+    <div class="schema-grid">
+      <div class="schema-card">
+        <h4>users</h4>
+        <div class="schema-field"><span class="field-name">id</span><span class="field-type">INTEGER <span class="field-pk">PK</span></span></div>
+        <div class="schema-field"><span class="field-name">username</span><span class="field-type">VARCHAR(80)</span></div>
+        <div class="schema-field"><span class="field-name">password_hash</span><span class="field-type">VARCHAR(256)</span></div>
+        <div class="schema-field"><span class="field-name">role</span><span class="field-type">VARCHAR(20)</span></div>
+        <div class="schema-field"><span class="field-name">created_at</span><span class="field-type">TIMESTAMP</span></div>
+      </div>
+      <div class="schema-card">
+        <h4>alerts</h4>
+        <div class="schema-field"><span class="field-name">id</span><span class="field-type">INTEGER <span class="field-pk">PK</span></span></div>
+        <div class="schema-field"><span class="field-name">event_type</span><span class="field-type">VARCHAR(50)</span></div>
+        <div class="schema-field"><span class="field-name">confidence</span><span class="field-type">FLOAT</span></div>
+        <div class="schema-field"><span class="field-name">camera_id</span><span class="field-type">VARCHAR(50)</span></div>
+        <div class="schema-field"><span class="field-name">image_url</span><span class="field-type">TEXT</span></div>
+        <div class="schema-field"><span class="field-name">timestamp</span><span class="field-type">TIMESTAMP</span></div>
+      </div>
+      <div class="schema-card">
+        <h4>benchmarks</h4>
+        <div class="schema-field"><span class="field-name">id</span><span class="field-type">INTEGER <span class="field-pk">PK</span></span></div>
+        <div class="schema-field"><span class="field-name">benchmark_type</span><span class="field-type">VARCHAR(50)</span></div>
+        <div class="schema-field"><span class="field-name">cores</span><span class="field-type">INTEGER</span></div>
+        <div class="schema-field"><span class="field-name">problem_size</span><span class="field-type">VARCHAR(20)</span></div>
+        <div class="schema-field"><span class="field-name">time_seconds</span><span class="field-type">FLOAT</span></div>
+        <div class="schema-field"><span class="field-name">created_at</span><span class="field-type">TIMESTAMP</span></div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Check PostgreSQL is running in k3s</span></div>
+      <pre><span class="c-gray"># Check PostgreSQL pods</span>
+kubectl get pods -A | grep postgres
+
+<span class="c-gray"># Check PostgreSQL service</span>
+kubectl get svc -A | grep postgres
+
+<span class="c-gray"># Connect to PostgreSQL directly</span>
+kubectl exec -it <span class="c-yellow">&lt;postgres-pod-name&gt;</span> -- psql -U edgeguard -d edgeguard
+
+<span class="c-gray"># List all tables</span>
+\dt
+
+<span class="c-gray"># Count alerts</span>
+SELECT COUNT(*) FROM alerts;</pre>
+    </div>
+  </div>
+
+  <!-- API Endpoints -->
+  <div class="section">
+    <h2 class="orange">API Endpoints</h2>
+    <p>All endpoints return JSON. Protected endpoints require a JWT token in the header: <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">Authorization: Bearer &lt;token&gt;</code></p>
+
+    <h3>Authentication</h3>
+    <div style="overflow-x:auto">
+      <table class="api-table">
+        <thead><tr><th>Endpoint</th><th>Method</th><th>Description</th><th>Auth</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>/api/login</td>
+            <td><span class="method post">POST</span></td>
+            <td>Login with username + password. Returns JWT token valid for 24 hours.</td>
+            <td>No</td>
+          </tr>
+          <tr>
+            <td>/api/users</td>
+            <td><span class="method get">GET</span></td>
+            <td>List all users. Admin only.</td>
+            <td><span class="auth-req">JWT required</span></td>
+          </tr>
+          <tr>
+            <td>/api/users</td>
+            <td><span class="method post">POST</span></td>
+            <td>Create new user with username, password, role.</td>
+            <td><span class="auth-req">JWT required</span></td>
+          </tr>
+          <tr>
+            <td>/api/users/&lt;id&gt;</td>
+            <td><span class="method delete">DELETE</span></td>
+            <td>Delete a user by ID.</td>
+            <td><span class="auth-req">JWT required</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Alerts</h3>
+    <div style="overflow-x:auto">
+      <table class="api-table">
+        <thead><tr><th>Endpoint</th><th>Method</th><th>Description</th><th>Auth</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>/api/alerts</td>
+            <td><span class="method get">GET</span></td>
+            <td>List all alerts paginated. Supports ?page=&lt;n&gt;&limit=&lt;n&gt; query params. Returns alerts with image URLs from MinIO.</td>
+            <td><span class="auth-req">JWT required</span></td>
+          </tr>
+          <tr>
+            <td>/api/alerts</td>
+            <td><span class="method post">POST</span></td>
+            <td>Create new alert. Called by inference service when face_covered detected. Saves snapshot to MinIO, stores record in PostgreSQL, triggers Telegram notification.</td>
+            <td><span class="auth-req">JWT required</span></td>
+          </tr>
+          <tr>
+            <td>/api/alerts/&lt;id&gt;</td>
+            <td><span class="method get">GET</span></td>
+            <td>Get single alert by ID with full details and presigned MinIO image URL.</td>
+            <td><span class="auth-req">JWT required</span></td>
+          </tr>
+          <tr>
+            <td>/api/alerts/&lt;id&gt;</td>
+            <td><span class="method delete">DELETE</span></td>
+            <td>Delete alert and its associated MinIO snapshot.</td>
+            <td><span class="auth-req">JWT required</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>System & Monitoring</h3>
+    <div style="overflow-x:auto">
+      <table class="api-table">
+        <thead><tr><th>Endpoint</th><th>Method</th><th>Description</th><th>Auth</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>/api/system/status</td>
+            <td><span class="method get">GET</span></td>
+            <td>Returns real-time per-node CPU, RAM, uptime, and online status. Queries Prometheus HTTP API internally. Powers the node health grid in the frontend.</td>
+            <td><span class="auth-req">JWT required</span></td>
+          </tr>
+          <tr>
+            <td>/api/stream</td>
+            <td><span class="method get">GET</span></td>
+            <td>Proxies the ZMQ video stream from Pi4 to frontend as MJPEG HTTP stream. Frontend displays this in the Live Camera page.</td>
+            <td><span class="auth-req">JWT required</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Benchmarks</h3>
+    <div style="overflow-x:auto">
+      <table class="api-table">
+        <thead><tr><th>Endpoint</th><th>Method</th><th>Description</th><th>Auth</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>/api/benchmarks</td>
+            <td><span class="method get">GET</span></td>
+            <td>Returns all benchmark results (Monte Carlo Pi, Matrix Multiply, HPL, Task Distributor). Frontend Results page reads from this endpoint to render charts.</td>
+            <td><span class="auth-req">JWT required</span></td>
+          </tr>
+          <tr>
+            <td>/api/benchmarks</td>
+            <td><span class="method post">POST</span></td>
+            <td>Store new benchmark result. Called after each benchmark run to persist results to PostgreSQL.</td>
+            <td><span class="auth-req">JWT required</span></td>
+          </tr>
+          <tr>
+            <td>/api/povray-renders</td>
+            <td><span class="method get">GET</span></td>
+            <td>Lists Task Distributor image chunk files stored in MinIO per node count. Frontend displays individual rendered row-bands to visualize parallelism.</td>
+            <td><span class="auth-req">JWT required</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Example — Login and use JWT token</span></div>
+      <pre><span class="c-gray"># Step 1: Login to get JWT token</span>
+TOKEN=$(curl -s -X POST http://10.10.10.1:30800/api/login \
+  -H <span class="c-green">"Content-Type: application/json"</span> \
+  -d <span class="c-green">'{"username":"admin","password":"your_password"}'</span> \
+  | python3 -c <span class="c-green">"import sys,json; print(json.load(sys.stdin)['token'])"</span>)
+
+<span class="c-gray"># Step 2: Use token to call protected endpoint</span>
+curl -H <span class="c-green">"Authorization: Bearer $TOKEN"</span> \
+  http://10.10.10.1:30800/api/system/status | python3 -m json.tool
+
+<span class="c-gray"># Step 3: Get alerts</span>
+curl -H <span class="c-green">"Authorization: Bearer $TOKEN"</span> \
+  http://10.10.10.1:30800/api/alerts?page=1&limit=10 | python3 -m json.tool</pre>
+    </div>
+  </div>
+
+  <!-- MinIO -->
+  <div class="section">
+    <h2 class="purple">MinIO — Object Storage</h2>
+    <p>
+      MinIO is an S3-compatible object storage server running on Pi5. It stores all 
+      alert snapshot images — when the inference service detects a suspicious event, 
+      it captures a frame and uploads it to MinIO. The alert record in PostgreSQL 
+      stores the MinIO object key, not the image itself.
+    </p>
+    <p>
+      When the frontend requests an alert, the backend generates a <b>presigned URL</b> — 
+      a temporary URL (valid for 1 hour) that allows the browser to download the image 
+      directly from MinIO without needing authentication credentials. This keeps 
+      image serving fast and off the Flask process.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><span class="code-title">How backend stores and retrieves images from MinIO</span></div>
+      <pre><span class="c-blue">from</span> minio <span class="c-blue">import</span> Minio
+<span class="c-blue">import</span> io
+
+minio_client = Minio(
+    <span class="c-green">"minio-service:9000"</span>,
+    access_key=<span class="c-green">"edgeguard"</span>,
+    secret_key=<span class="c-green">"your_secret"</span>,
+    secure=<span class="c-orange">False</span>
+)
+
+<span class="c-gray"># Save snapshot on alert detection</span>
+<span class="c-blue">def</span> <span class="c-green">save_snapshot</span>(frame_bytes, alert_id):
+    object_name = <span class="c-green">f"alerts/alert_{alert_id}.jpg"</span>
+    minio_client.put_object(
+        <span class="c-green">"edgeguard-snapshots"</span>,
+        object_name,
+        io.BytesIO(frame_bytes),
+        length=len(frame_bytes),
+        content_type=<span class="c-green">"image/jpeg"</span>
+    )
+    <span class="c-blue">return</span> object_name
+
+<span class="c-gray"># Generate presigned URL for frontend to display image</span>
+<span class="c-blue">def</span> <span class="c-green">get_image_url</span>(object_name):
+    <span class="c-blue">from</span> datetime <span class="c-blue">import</span> timedelta
+    url = minio_client.presigned_get_object(
+        <span class="c-green">"edgeguard-snapshots"</span>,
+        object_name,
+        expires=timedelta(hours=<span class="c-orange">1</span>)
+    )
+    <span class="c-blue">return</span> url  <span class="c-gray"># temporary URL valid for 1 hour</span></pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Check MinIO is running and accessible</span></div>
+      <pre><span class="c-gray"># Check MinIO pod</span>
+kubectl get pods -A | grep minio
+
+<span class="c-gray"># List all buckets using MinIO CLI (mc)</span>
+mc alias set local http://10.10.10.1:9000 edgeguard your_secret
+mc ls local/
+
+<span class="c-gray"># Count alert snapshots</span>
+mc ls local/edgeguard-snapshots/alerts/ | wc -l</pre>
+    </div>
+  </div>
+
+  <!-- JWT Auth -->
+  <div class="section">
+    <h2>JWT Authentication</h2>
+    <p>
+      Every API endpoint (except <code>/api/login</code>) requires a valid JWT token. 
+      JWT (JSON Web Token) is a stateless authentication mechanism — the server does not 
+      store session data. Instead, the token itself contains the user identity and 
+      expiry time, signed with a secret key only the server knows.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><span class="code-title">JWT authentication in Flask (simplified)</span></div>
+      <pre><span class="c-blue">import</span> jwt
+<span class="c-blue">from</span> functools <span class="c-blue">import</span> wraps
+<span class="c-blue">from</span> flask <span class="c-blue">import</span> request, jsonify
+<span class="c-blue">from</span> datetime <span class="c-blue">import</span> datetime, timedelta
+
+SECRET_KEY = <span class="c-green">"your_secret_key"</span>
+
+<span class="c-gray"># Generate token on login</span>
+<span class="c-blue">def</span> <span class="c-green">generate_token</span>(user_id):
+    payload = {
+        <span class="c-green">'user_id'</span>: user_id,
+        <span class="c-green">'exp'</span>: datetime.utcnow() + timedelta(hours=<span class="c-orange">24</span>)
+    }
+    <span class="c-blue">return</span> jwt.encode(payload, SECRET_KEY, algorithm=<span class="c-green">'HS256'</span>)
+
+<span class="c-gray"># Decorator to protect endpoints</span>
+<span class="c-blue">def</span> <span class="c-green">token_required</span>(f):
+    @wraps(f)
+    <span class="c-blue">def</span> <span class="c-green">decorated</span>(*args, **kwargs):
+        token = request.headers.get(<span class="c-green">'Authorization'</span>, <span class="c-green">''</span>).replace(<span class="c-green">'Bearer '</span>, <span class="c-green">''</span>)
+        <span class="c-blue">try</span>:
+            data = jwt.decode(token, SECRET_KEY, algorithms=[<span class="c-green">'HS256'</span>])
+        <span class="c-blue">except</span>:
+            <span class="c-blue">return</span> jsonify({<span class="c-green">'error'</span>: <span class="c-green">'Invalid or expired token'</span>}), <span class="c-orange">401</span>
+        <span class="c-blue">return</span> f(*args, **kwargs)
+    <span class="c-blue">return</span> decorated
+
+<span class="c-gray"># Usage: protect any endpoint</span>
+@app.route(<span class="c-green">'/api/alerts'</span>)
+@token_required
+<span class="c-blue">def</span> <span class="c-green">get_alerts</span>():
+    <span class="c-blue">return</span> jsonify(alerts)</pre>
+    </div>
+  </div>
+
+  <!-- High Availability -->
+  <div class="section">
+    <h2 class="red">High Availability — 2 Replicas with Anti-Affinity</h2>
+    <p>
+      Running a single Flask pod would mean any node failure or pod crash takes down 
+      the entire EdgeGuard backend. We deployed 2 replicas with <b>pod anti-affinity</b> 
+      rules — Kubernetes scheduling constraints that guarantee the two pods never land 
+      on the same physical node.
+    </p>
+
+    <div class="ha-diagram">
+      <span style="color:var(--accent2)">Load Balancer (k3s NodePort Service)</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;│<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;├──────────────────────┐<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;▼&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▼<br>
+      <span style="color:var(--accent)">Flask Replica 1</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--accent)">Flask Replica 2</span><br>
+      <span style="color:var(--text2)">(pi3-03)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(pi3-07)</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;└──────────┬───────────┘<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▼<br>
+      <span style="color:var(--warn)">PostgreSQL StatefulSet (Pi5)</span><br>
+      <span style="color:var(--text2)">Both replicas share the same database</span>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml</span><span class="code-title">k3s Deployment — anti-affinity rule (key section)</span></div>
+      <pre><span class="c-yellow">spec:</span>
+  <span class="c-blue">replicas:</span> <span class="c-orange">2</span>
+  <span class="c-blue">template:</span>
+    <span class="c-blue">spec:</span>
+      <span class="c-blue">affinity:</span>
+        <span class="c-blue">podAntiAffinity:</span>
+          <span class="c-blue">requiredDuringSchedulingIgnoredDuringExecution:</span>
+          - <span class="c-blue">labelSelector:</span>
+              <span class="c-blue">matchExpressions:</span>
+              - <span class="c-blue">key:</span> <span class="c-green">app</span>
+                <span class="c-blue">operator:</span> <span class="c-green">In</span>
+                <span class="c-blue">values:</span>
+                - <span class="c-green">edgeguard-backend</span>
+            <span class="c-blue">topologyKey:</span> <span class="c-green">"kubernetes.io/hostname"</span>
+            <span class="c-gray"># ↑ This means: never put 2 backend pods on the same node</span></pre>
+    </div>
+
+    <h3>What Happens When a Node Crashes?</h3>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Event</th><th>What k3s does</th><th>Impact on users</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Pi3-03 crashes (Replica 1 down)</td>
+            <td>k3s detects pod unhealthy, reschedules Replica 1 on another available Pi3</td>
+            <td class="good">Zero downtime — Replica 2 continues serving</td>
+          </tr>
+          <tr>
+            <td>Both replicas crash simultaneously</td>
+            <td>k3s restarts both pods on available nodes</td>
+            <td>Brief downtime (~30s) until pods are Running again</td>
+          </tr>
+          <tr>
+            <td>PostgreSQL pod crashes</td>
+            <td>StatefulSet restarts PostgreSQL, data preserved on persistent volume</td>
+            <td>Brief DB unavailability — Flask returns 503 until DB recovers</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Check backend health</span></div>
+      <pre><span class="c-gray"># Both backend pods should show Running on different nodes</span>
+kubectl get pods -A -o wide | grep backend
+
+<span class="c-gray"># Check backend service</span>
+kubectl get svc -A | grep backend
+
+<span class="c-gray"># Test backend is responding</span>
+curl http://10.10.10.1:30800/api/health
+
+<span class="c-gray"># View backend logs from both replicas</span>
+kubectl logs -l app=edgeguard-backend --all-containers</pre>
+    </div>
+  </div>
+
+  <!-- Screenshots -->
+  <div class="section">
+    <h2>Screenshots</h2>
+    <div class="img-grid">
+      <div class="img-block">
+        <img src="backend_pods.png" alt="Backend Pods"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="img-placeholder">
+          <span class="img-icon">🖥️</span>
+          <span class="img-name">backend_pods.png</span>
+          <span class="img-desc">kubectl get pods showing 2 backend replicas on different nodes</span>
+        </div>
+        <div class="img-caption">Figure 1 — Two Flask replicas running on separate Pi3 nodes.</div>
+      </div>
+      <div class="img-block">
+        <img src="api_response.png" alt="API Response"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="img-placeholder">
+          <span class="img-icon">📡</span>
+          <span class="img-name">api_response.png</span>
+          <span class="img-desc">Example /api/system/status JSON response</span>
+        </div>
+        <div class="img-caption">Figure 2 — Backend /api/system/status response showing per-node metrics.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Findings -->
+  <div class="section">
+    <h2>Key Findings</h2>
+    <div class="finding">
+      <h4>✅ High availability confirmed — survives node failure</h4>
+      <p>Tested by manually stopping k3s-agent on the node running Replica 1. 
+      EdgeGuard frontend continued working without interruption — all requests 
+      were served by Replica 2 while k3s rescheduled Replica 1 on another node.</p>
+    </div>
+    <div class="finding">
+      <h4>✅ PostgreSQL migration eliminated concurrent write failures</h4>
+      <p>After migrating from SQLite, concurrent alert writes from the inference 
+      service and benchmark writes never conflict. PostgreSQL handles transaction 
+      isolation correctly across both Flask replicas.</p>
+    </div>
+    <div class="finding warn">
+      <h4>⚠️ MinIO presigned URLs expire after 1 hour</h4>
+      <p>Alert image URLs in the frontend expire after 1 hour. If a user keeps the 
+      Alerts page open for more than an hour, older images stop loading. 
+      A future improvement would be to regenerate presigned URLs on demand 
+      via a dedicated /api/alerts/&lt;id&gt;/image endpoint.</p>
+    </div>
+    <div class="finding info">
+      <h4>🔍 Why k3s and not plain Docker?</h4>
+      <p>Docker alone provides containerization but no orchestration — you would 
+      manually restart crashed containers and manage networking yourself. 
+      k3s provides automatic restart, load balancing across replicas, 
+      persistent storage management, and health checks out of the box. 
+      This is what separates a student project from a production system.</p>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <a href="task6.html" class="nav-btn prev">← Task 6 — AI Inference</a>
+    <a href="task8.html" class="nav-btn next">Task 8 — Frontend →</a>
+  </div>
+
+</div>
+
+<footer>
+  EdgeGuard SS2026 · Frankfurt University of Applied Sciences · Prof. Dr. Christian Baun ·
+  <a href="index.html">← Back to Docs</a> ·
+  <a href="https://github.com/nauman-iftikhar/Edgeguard">GitHub</a> ·
+  Presentation: July 16, 2026 · Room 1-234 · 14:15–17:15
+</footer>
+
+</body>
+</html>

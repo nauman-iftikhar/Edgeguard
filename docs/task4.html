@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task 4 — Task Distributor | EdgeGuard SS2026</title>
+<style>
+  :root {
+    --bg: #f0f4f8; --surface: #ffffff; --surface2: #f8fafc;
+    --border: #e2e8f0; --accent: #0d9e75; --accent2: #2563a8;
+    --text: #0f172a; --text2: #64748b; --text3: #475569;
+    --warn: #d97706; --danger: #dc2626;
+    --code-bg: #1e293b; --code-text: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+
+  header { background: #1a3a5c; padding: 0 40px; border-bottom: 3px solid var(--accent); }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 36px 0 32px; }
+  .breadcrumb { font-size: 0.78rem; color: #93c5fd; margin-bottom: 12px; }
+  .breadcrumb a { color: #6ee7c7; text-decoration: none; }
+  .task-eyebrow { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: #6ee7c7; margin-bottom: 10px; }
+  header h1 { font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-bottom: 10px; }
+  header p { color: #93c5fd; font-size: 0.95rem; max-width: 700px; margin-bottom: 18px; }
+  .header-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge { font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; background: rgba(255,255,255,0.08); }
+  .badge.green { border-color: #6ee7c7; color: #6ee7c7; }
+  .badge.lead  { border-color: #93c5fd; color: #93c5fd; background: rgba(147,197,253,0.1); }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 48px 40px; }
+
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px; margin-bottom: 24px; }
+  .section h2 { font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .section h2::before { content: ''; display: inline-block; width: 3px; height: 18px; background: var(--accent); border-radius: 2px; }
+  .section h2.blue::before { background: var(--accent2); }
+  .section h2.orange::before { background: var(--warn); }
+  .section h2.red::before { background: var(--danger); }
+  .section p { font-size: 0.9rem; color: var(--text3); line-height: 1.7; margin-top: 8px; }
+  .section h3 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
+
+  .code-wrap { background: var(--code-bg); border-radius: 8px; overflow: hidden; margin: 14px 0; }
+  .code-header { background: #0f172a; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .code-lang { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; }
+  .code-title { font-size: 0.78rem; color: #94a3b8; }
+  pre { padding: 16px; overflow-x: auto; color: var(--code-text); line-height: 1.7; font-family: 'Courier New', monospace; font-size: 0.82rem; }
+  .c-green { color: #4ade80; } .c-blue { color: #93c5fd; } .c-gray { color: #64748b; } .c-yellow { color: #fde68a; }
+  .placeholder { background: rgba(251,191,36,0.2); color: #fbbf24; padding: 0 3px; border-radius: 3px; font-style: italic; }
+
+  .finding { border-left: 3px solid var(--accent); background: #f0fdf4; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .finding.warn { border-color: var(--warn); background: #fffbeb; }
+  .finding.bad  { border-color: var(--danger); background: #fef2f2; }
+  .finding.info { border-color: var(--accent2); background: #eff6ff; }
+  .finding h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+  .finding p  { font-size: 0.85rem; color: #444; margin: 0; line-height: 1.6; }
+
+  .params-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0; }
+  .param-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .param-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text2); margin-bottom: 4px; }
+  .param-value { font-size: 1rem; font-weight: 700; color: var(--accent2); font-family: 'Courier New', monospace; }
+  .param-note { font-size: 0.75rem; color: var(--text2); margin-top: 4px; }
+
+  .timing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+  .timing-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
+  .timing-num { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; font-family: 'Courier New', monospace; }
+  .timing-label { font-size: 0.78rem; color: var(--text2); font-weight: 600; margin-bottom: 4px; }
+  .timing-desc { font-size: 0.75rem; color: var(--text3); }
+
+  .res-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; }
+  .res-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .res-size { font-size: 0.88rem; font-weight: 700; color: var(--text); font-family: 'Courier New', monospace; margin-bottom: 4px; }
+  .res-note { font-size: 0.78rem; color: var(--text3); }
+  .res-card.limit { border-color: var(--danger); }
+  .res-card.limit .res-size { color: var(--danger); }
+
+  .img-block { margin: 20px 0; }
+  .img-block img { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; }
+  .img-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: var(--surface2); border: 2px dashed var(--border); border-radius: 8px; padding: 28px; text-align: center; }
+  .img-placeholder .img-icon { font-size: 1.8rem; }
+  .img-placeholder .img-name { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--accent2); font-weight: 700; }
+  .img-placeholder .img-desc { font-size: 0.78rem; color: var(--text2); }
+  .img-caption { font-size: 0.78rem; color: var(--text2); text-align: center; margin-top: 8px; font-style: italic; }
+  .img-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+
+  .bottom-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+  .nav-btn { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 0.88rem; padding: 10px 20px; border-radius: 8px; font-weight: 600; transition: all 0.15s; }
+  .nav-btn.prev { color: var(--text2); border: 1px solid var(--border); background: var(--surface); }
+  .nav-btn.prev:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn.next { color: white; background: #1a3a5c; border: 1px solid #1a3a5c; }
+  .nav-btn.next:hover { background: var(--accent); border-color: var(--accent); }
+
+  footer { background: #1a3a5c; border-top: 3px solid var(--accent); padding: 24px 40px; text-align: center; font-size: 0.82rem; color: #93c5fd; }
+  footer a { color: #6ee7c7; text-decoration: none; }
+
+  @media (max-width: 768px) {
+    header, footer { padding: 0 20px; }
+    .container { padding: 24px 20px; }
+    header h1 { font-size: 1.6rem; }
+    .timing-grid { grid-template-columns: 1fr; }
+    .img-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="breadcrumb"><a href="index.html">← EdgeGuard Docs</a> / Task 4</div>
+    <div class="task-eyebrow">Task 4 · Non-MPI Scaling</div>
+    <h1>Task Distributor (Non-MPI)</h1>
+    <p>Demonstrating Amdahl's Law and Gustafson's Law using Prof. Baun's own Task Distributor tool with POV-Ray ray-tracing — without MPI.</p>
+    <div class="header-meta">
+      <span class="badge lead">👤 Lead: Abdur Rahim Nishad, Krish</span>
+      <span class="badge green">✓ Complete</span>
+      <span class="badge">Task Distributor · POV-Ray · SSH · NFS</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- What is Task Distributor -->
+  <div class="section">
+    <h2>What is Task Distributor?</h2>
+    <p>
+      Task Distributor is a non-MPI parallel tool written by <b>Prof. Dr. Christian Baun</b> 
+      (published in SpringerPlus 2016, DOI: 10.1186/s40064-016-2254-x). It distributes a 
+      POV-Ray ray-tracing render job across multiple nodes using SSH — each node renders 
+      an equal horizontal band of rows and writes its result to a shared NFS path. 
+      The master node polls a shared lockfile and stitches all parts together with ImageMagick.
+    </p>
+    <p>
+      Unlike MPI which launches all processes simultaneously via <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">mpirun</code>, 
+      Task Distributor dispatches jobs sequentially via SSH and checks completion 
+      sequentially — making the coordination itself a measurable serial fraction, 
+      exactly what Amdahl's Law predicts.
+    </p>
+    <div class="finding info">
+      <h4>ℹ️ Why node-based and not core-based?</h4>
+      <p>Task Distributor is architecturally node-based by design — it dispatches one POV-Ray 
+      process per node via SSH. The tool's own README and <code>-n</code> flag explicitly say 
+      "number of nodes". This matches Prof. Baun's own published methodology where he used 
+      1, 2, 4, 8 nodes. We followed the same approach.</p>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="section">
+    <h2 class="blue">How It Works — 3 Timing Parts</h2>
+    <p>Task Distributor explicitly reports three timing components per run. This makes the serial and parallel fractions directly measurable — a perfect Amdahl's Law demonstration.</p>
+
+    <div class="timing-grid">
+      <div class="timing-card">
+        <div class="timing-num" style="color:var(--accent2)">seq1</div>
+        <div class="timing-label">1st Sequential Part</div>
+        <div class="timing-desc">SSH dispatch to all nodes. Fixed overhead ~0.003s regardless of node count or resolution.</div>
+      </div>
+      <div class="timing-card">
+        <div class="timing-num" style="color:var(--accent)">parallel</div>
+        <div class="timing-label">Parallel Part</div>
+        <div class="timing-desc">Actual POV-Ray rendering on all nodes simultaneously. This is the part that scales with more nodes.</div>
+      </div>
+      <div class="timing-card">
+        <div class="timing-num" style="color:var(--warn)">seq2</div>
+        <div class="timing-label">2nd Sequential Part</div>
+        <div class="timing-desc">ImageMagick stitching of all image parts. Grows with node count as more parts need combining.</div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">text</span><span class="code-title">Example output</span></div>
+      <pre>Required time to process the 1st sequential part:    0.003s  <span class="c-gray">← SSH dispatch (fixed)</span>
+Required time to process the parallel part:          55.134s  <span class="c-gray">← POV-Ray render (scales)</span>
+Required time to process the 2nd sequential part:    0.012s  <span class="c-gray">← ImageMagick stitch (grows)</span></pre>
+    </div>
+  </div>
+
+  <!-- Test Setup -->
+  <div class="section">
+    <h2>Test Setup</h2>
+
+    <div class="params-grid">
+      <div class="param-card">
+        <div class="param-label">Tool</div>
+        <div class="param-value">task-distributor</div>
+        <div class="param-note">~/task-distributor/task-distributor-master.sh</div>
+      </div>
+      <div class="param-card">
+        <div class="param-label">Renderer</div>
+        <div class="param-value">POV-Ray</div>
+        <div class="param-note">/usr/bin/povray · benchmark.pov scene</div>
+      </div>
+      <div class="param-card">
+        <div class="param-label">Node counts</div>
+        <div class="param-value">1, 2, 4, 8</div>
+        <div class="param-note">Node-based (not core-based)</div>
+      </div>
+      <div class="param-card">
+        <div class="param-label">Runs per config</div>
+        <div class="param-value">5</div>
+        <div class="param-note">Min/max/mean reported</div>
+      </div>
+      <div class="param-card">
+        <div class="param-label">Cooldown</div>
+        <div class="param-value">30s</div>
+        <div class="param-note">Between runs</div>
+      </div>
+      <div class="param-card">
+        <div class="param-label">Baseline node</div>
+        <div class="param-value">pi3-02</div>
+        <div class="param-note">~53s render at 3200×2400</div>
+      </div>
+    </div>
+
+    <h3>Resolution Ladder — Why These Sizes?</h3>
+    <p>We tested a ladder of resolutions from small to large to show the progression from poor scaling (small problem, overhead dominates) to better scaling (large problem, compute dominates) — directly demonstrating Amdahl's and Gustafson's Laws.</p>
+
+    <div class="res-grid">
+      <div class="res-card">
+        <div class="res-size">400×300</div>
+        <div class="res-note">Poor scaling — SSH overhead dominates. 8 nodes SLOWER than 1 node. Clear Amdahl demonstration.</div>
+      </div>
+      <div class="res-card">
+        <div class="res-size">800×600</div>
+        <div class="res-note">Slight improvement. Render time still close to dispatch overhead.</div>
+      </div>
+      <div class="res-card">
+        <div class="res-size">1600×1200</div>
+        <div class="res-note">Scaling improves. 8 nodes achieves ~1.5× over 1 node.</div>
+      </div>
+      <div class="res-card">
+        <div class="res-size">3200×2400</div>
+        <div class="res-note">Best scaling — 8 nodes achieves 1.93×. Compute clearly dominates. Gustafson visible.</div>
+      </div>
+      <div class="res-card limit">
+        <div class="res-size">4800×3600 ❌</div>
+        <div class="res-note">Confirmed failure — POV-Ray intermediate storage needs &gt;453MB tmpfs. Pi3 limit reached.</div>
+      </div>
+    </div>
+
+    <div class="finding bad">
+      <h4>❌ Memory limit at 4800×3600</h4>
+      <p>POV-Ray writes intermediate <code>.pov-state</code> files to <code>/tmp</code> during rendering. 
+      At 4800×3600 this requires more than 453MB — exceeding Pi3's tmpfs limit (half of 1GB RAM). 
+      Confirmed independently by another student group in the same course. 
+      Maximum feasible resolution: <b>3200×2400</b>.</p>
+    </div>
+  </div>
+
+  <!-- Pre-benchmark -->
+  <div class="section">
+    <h2 class="orange">How to Reproduce</h2>
+
+    <h3>Pre-Benchmark Setup</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Step 1 — Stop k3s and mount NFS on all Pi3s</span></div>
+      <pre><span class="c-gray"># Stop k3s-agent</span>
+<span class="c-blue">for</span> ip <span class="c-blue">in</span> 10.10.10.21 10.10.10.22 10.10.10.23 10.10.10.24 \
+          10.10.10.25 10.10.10.26 10.10.10.27 10.10.10.28; <span class="c-blue">do</span>
+    ssh admin@$ip <span class="c-green">"sudo systemctl stop k3s-agent"</span> &
+<span class="c-blue">done</span>
+wait
+
+<span class="c-gray"># Mount shared NFS (required for lockfile and image parts)</span>
+<span class="c-blue">for</span> ip <span class="c-blue">in</span> 10.10.10.21 10.10.10.22 10.10.10.23 10.10.10.24 \
+          10.10.10.25 10.10.10.26 10.10.10.27 10.10.10.28; <span class="c-blue">do</span>
+    ssh admin@$ip <span class="c-green">"sudo mkdir -p /nfs/shared && \
+        sudo mount -t nfs 10.10.10.1:/nfs/shared /nfs/shared"</span> &
+<span class="c-blue">done</span>
+wait</pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Step 2 — Clean up before each run</span></div>
+      <pre><span class="c-gray"># Always clean lockfile and old image parts before running</span>
+rm -f /nfs/shared/povray/lockfile
+rm -f /nfs/shared/povray/*.png
+rm -f /tmp/output_*.png
+
+<span class="c-gray"># Also clean tmp on all Pi3 nodes</span>
+<span class="c-blue">for</span> ip <span class="c-blue">in</span> 10.10.10.21 10.10.10.22 10.10.10.23 10.10.10.24 \
+          10.10.10.25 10.10.10.26 10.10.10.27 10.10.10.28; <span class="c-blue">do</span>
+    ssh admin@$ip <span class="c-green">"rm -f /tmp/benchmark*.png /tmp/pov-state* /tmp/pov*"</span> &
+<span class="c-blue">done</span>
+wait</pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Step 3 — Run Task Distributor</span></div>
+      <pre><span class="c-gray"># Replace &lt;NODES&gt; with: 1, 2, 4, or 8
+# Replace &lt;WIDTH&gt; x &lt;HEIGHT&gt; with resolution:
+#   400x300 | 800x600 | 1600x1200 | 3200x2400</span>
+
+cd ~/task-distributor
+./task-distributor-master.sh \
+    -n <span class="placeholder">&lt;NODES&gt;</span> \
+    -x <span class="placeholder">&lt;WIDTH&gt;</span> \
+    -y <span class="placeholder">&lt;HEIGHT&gt;</span> \
+    -p /nfs/shared/povray \
+    -f -c
+
+<span class="c-gray"># Example: 4 nodes, 1600x1200</span>
+./task-distributor-master.sh -n 4 -x 1600 -y 1200 -p /nfs/shared/povray -f -c
+
+<span class="c-gray"># Flags:
+#   -n  number of nodes
+#   -x  image width
+#   -y  image height
+#   -p  path for lockfile and image parts (must be NFS)
+#   -f  force (overwrite existing lockfile)
+#   -c  cleanup after (remove image parts)</span></pre>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="section">
+    <h2>Results — Chart Overview</h2>
+    <p>Full results with timing breakdown (seq1, parallel, seq2) per resolution and node count are on the Results page.</p>
+
+    <div class="img-grid">
+      <div class="img-block">
+        <img src="td_scaling_all_resolutions.png" alt="Task Distributor Scaling"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="img-placeholder">
+          <span class="img-icon">📊</span>
+          <span class="img-name">td_scaling_all_resolutions.png</span>
+          <span class="img-desc">Total Time vs Node Count — All Resolutions</span>
+        </div>
+        <div class="img-caption">Figure 1 — Scaling across all resolutions. Small resolutions get worse with more nodes; large resolutions improve.</div>
+      </div>
+      <div class="img-block">
+        <img src="td_timing_breakdown.png" alt="Task Distributor Timing Breakdown"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="img-placeholder">
+          <span class="img-icon">⏱️</span>
+          <span class="img-name">td_timing_breakdown.png</span>
+          <span class="img-desc">Stacked Bar: seq1 + parallel + seq2 per Node Count</span>
+        </div>
+        <div class="img-caption">Figure 2 — Three timing parts stacked. Shows how seq2 (ImageMagick stitch) grows as a serial bottleneck.</div>
+      </div>
+    </div>
+
+    <div class="img-block">
+      <img src="td_speedup_3200x2400.png" alt="Task Distributor Speedup 3200x2400"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="img-placeholder">
+        <span class="img-icon">⚡</span>
+        <span class="img-name">td_speedup_3200x2400.png</span>
+        <span class="img-desc">Speedup vs Node Count at 3200×2400 (best scaling)</span>
+      </div>
+      <div class="img-caption">Figure 3 — Speedup at largest feasible resolution. 8 nodes achieves 1.93× — limited by sequential lockfile checking.</div>
+    </div>
+  </div>
+
+  <!-- Key Findings -->
+  <div class="section">
+    <h2>Key Findings</h2>
+
+    <div class="finding bad">
+      <h4>❌ Small resolutions: more nodes = slower (Amdahl's Law)</h4>
+      <p>At 400×300 — 8 nodes is consistently SLOWER than 1 node. Render time per node is ~0.05s 
+      but SSH dispatch + sequential lockfile checking takes ~3s fixed. The serial fraction 
+      completely dominates. This is the clearest Amdahl's Law demonstration in our benchmarks.</p>
+    </div>
+    <div class="finding">
+      <h4>✅ Large resolutions: scaling improves (Gustafson's Law)</h4>
+      <p>At 3200×2400 — 1 node baseline is 55s, 8 nodes achieves 28.5s (1.93× speedup). 
+      Render time per node (~7s) now significantly exceeds coordination overhead, 
+      so compute dominates. Increasing the problem size pushed the parallelization limit.</p>
+    </div>
+    <div class="finding warn">
+      <h4>⚠️ Sequential lockfile checking limits maximum speedup</h4>
+      <p>The master script checks node completion sequentially — it waits for node 1, then node 2, etc. 
+      This means even if all nodes finish simultaneously, the master processes them one by one. 
+      This architectural serial fraction caps the maximum achievable speedup regardless of 
+      how large the render job is.</p>
+    </div>
+    <div class="finding info">
+      <h4>🔍 Contrast with MPI</h4>
+      <p>MPI's <code>mpirun</code> launches all processes simultaneously and collects results in parallel. 
+      Task Distributor's sequential SSH dispatch is fundamentally different. 
+      This is why Monte Carlo Pi achieves 16.2× at 32 cores while Task Distributor 
+      achieves only 1.93× at 8 nodes — the coordination mechanism matters as much as the hardware.</p>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <a href="task3.html" class="nav-btn prev">← Task 3 — MPI</a>
+    <a href="task5.html" class="nav-btn next">Task 5 — Monitoring →</a>
+  </div>
+
+</div>
+
+<footer>
+  EdgeGuard SS2026 · Frankfurt University of Applied Sciences · Prof. Dr. Christian Baun ·
+  <a href="index.html">← Back to Docs</a> ·
+  <a href="https://github.com/nauman-iftikhar/Edgeguard">GitHub</a> ·
+  Presentation: July 16, 2026 · Room 1-234 · 14:15–17:15
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task 8 — Frontend | EdgeGuard SS2026</title>
+<style>
+  :root {
+    --bg: #f0f4f8; --surface: #ffffff; --surface2: #f8fafc;
+    --border: #e2e8f0; --accent: #0d9e75; --accent2: #2563a8;
+    --text: #0f172a; --text2: #64748b; --text3: #475569;
+    --warn: #d97706; --danger: #dc2626;
+    --code-bg: #1e293b; --code-text: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+
+  header { background: #1a3a5c; padding: 0 40px; border-bottom: 3px solid var(--accent); }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 36px 0 32px; }
+  .breadcrumb { font-size: 0.78rem; color: #93c5fd; margin-bottom: 12px; }
+  .breadcrumb a { color: #6ee7c7; text-decoration: none; }
+  .task-eyebrow { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: #6ee7c7; margin-bottom: 10px; }
+  header h1 { font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-bottom: 10px; }
+  header p { color: #93c5fd; font-size: 0.95rem; max-width: 700px; margin-bottom: 18px; }
+  .header-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge { font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; background: rgba(255,255,255,0.08); }
+  .badge.green { border-color: #6ee7c7; color: #6ee7c7; }
+  .badge.lead  { border-color: #93c5fd; color: #93c5fd; background: rgba(147,197,253,0.1); }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 48px 40px; }
+
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px; margin-bottom: 24px; }
+  .section h2 { font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .section h2::before { content: ''; display: inline-block; width: 3px; height: 18px; background: var(--accent); border-radius: 2px; }
+  .section h2.blue::before { background: var(--accent2); }
+  .section h2.orange::before { background: var(--warn); }
+  .section h2.red::before { background: var(--danger); }
+  .section h2.purple::before { background: #7c3aed; }
+  .section p { font-size: 0.9rem; color: var(--text3); line-height: 1.7; margin-top: 8px; }
+  .section h3 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
+
+  .code-wrap { background: var(--code-bg); border-radius: 8px; overflow: hidden; margin: 14px 0; }
+  .code-header { background: #0f172a; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .code-lang { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; }
+  .code-title { font-size: 0.78rem; color: #94a3b8; }
+  pre { padding: 16px; overflow-x: auto; color: var(--code-text); line-height: 1.7; font-family: 'Courier New', monospace; font-size: 0.82rem; }
+  .c-green { color: #4ade80; } .c-blue { color: #93c5fd; } .c-gray { color: #64748b; }
+  .c-yellow { color: #fde68a; } .c-orange { color: #fdba74; } .c-purple { color: #c4b5fd; }
+
+  .finding { border-left: 3px solid var(--accent); background: #f0fdf4; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .finding.warn { border-color: var(--warn); background: #fffbeb; }
+  .finding.bad  { border-color: var(--danger); background: #fef2f2; }
+  .finding.info { border-color: var(--accent2); background: #eff6ff; }
+  .finding.purple { border-color: #7c3aed; background: #f5f3ff; }
+  .finding h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+  .finding p  { font-size: 0.85rem; color: #444; margin: 0; line-height: 1.6; }
+
+  /* Tech stack */
+  .stack-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; }
+  .stack-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .stack-card h4 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text2); margin-bottom: 6px; }
+  .stack-card .name { font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .stack-card .desc { font-size: 0.8rem; color: var(--text3); line-height: 1.5; }
+
+  /* Page cards */
+  .page-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin: 14px 0; border-left: 4px solid var(--accent2); }
+  .page-card.green { border-left-color: var(--accent); }
+  .page-card.orange { border-left-color: var(--warn); }
+  .page-card.red { border-left-color: var(--danger); }
+  .page-card.purple { border-left-color: #7c3aed; }
+  .page-num { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text2); margin-bottom: 4px; }
+  .page-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .page-card p { font-size: 0.87rem; color: var(--text3); margin: 0; line-height: 1.7; }
+  .page-card h4 { font-size: 0.85rem; font-weight: 700; color: var(--text); margin: 10px 0 4px; }
+  .page-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .page-tag { font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border); color: var(--text2); }
+
+  /* Data flow */
+  .data-flow { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin: 12px 0; font-size: 0.85rem; color: var(--text3); }
+  .data-flow strong { color: var(--accent2); }
+
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 14px 0; }
+  .data-table th { background: #1a3a5c; color: white; padding: 9px 14px; text-align: left; font-size: 0.78rem; text-transform: uppercase; }
+  .data-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--text3); }
+  .data-table tr:hover td { background: var(--surface2); }
+  .data-table td b { color: var(--text); }
+  .good { color: var(--accent) !important; font-weight: 700; }
+
+  .bottom-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+  .nav-btn { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 0.88rem; padding: 10px 20px; border-radius: 8px; font-weight: 600; transition: all 0.15s; }
+  .nav-btn.prev { color: var(--text2); border: 1px solid var(--border); background: var(--surface); }
+  .nav-btn.prev:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn.next { color: white; background: #1a3a5c; border: 1px solid #1a3a5c; }
+  .nav-btn.next:hover { background: var(--accent); border-color: var(--accent); }
+
+  footer { background: #1a3a5c; border-top: 3px solid var(--accent); padding: 24px 40px; text-align: center; font-size: 0.82rem; color: #93c5fd; }
+  footer a { color: #6ee7c7; text-decoration: none; }
+
+  @media (max-width: 768px) {
+    header, footer { padding: 0 20px; }
+    .container { padding: 24px 20px; }
+    header h1 { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="breadcrumb"><a href="index.html">← EdgeGuard Docs</a> / Task 8</div>
+    <div class="task-eyebrow">Task 8 · Frontend</div>
+    <h1>Frontend Dashboard</h1>
+    <p>EdgeGuard — a React single-page application with 7 pages, dark/light mode, interactive benchmark charts, and live cluster monitoring. Deployed as 2 highly-available k3s replicas.</p>
+    <div class="header-meta">
+      <span class="badge lead">👤 Lead: Muhammad Saleem, Muhammad Furqan Shafique</span>
+      <span class="badge green">✓ Complete</span>
+      <span class="badge">React · nginx · JWT · k3s · REST API</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Overview -->
+  <div class="section">
+    <h2>Overview</h2>
+    <p>
+      The EdgeGuard frontend is a <b>React Single Page Application (SPA)</b> — 
+      a web app that loads once and handles all page navigation client-side without 
+      full page reloads. It communicates exclusively with the Flask backend REST API 
+      and never touches the database or MinIO directly.
+    </p>
+    <p>
+      The application has <b>7 pages</b> covering every aspect of the EdgeGuard system — 
+      live camera feed, security alerts, cluster health, auto-scaling, pod distribution, 
+      benchmark results, and user management. All pages support both <b>dark and light mode</b> 
+      with a toggle persisted in localStorage.
+    </p>
+    <p>
+      The built React app is served by <b>nginx</b> running inside a Docker container, 
+      deployed as <b>2 k3s replicas</b> with pod anti-affinity — same high-availability 
+      approach as the backend. Users access the app via a k3s NodePort service.
+    </p>
+
+    <div class="finding info">
+      <h4>ℹ️ Why React and not plain HTML/JavaScript?</h4>
+      <p>A 7-page application with live data, interactive charts, pagination, 
+      and real-time updates would be extremely complex to maintain in plain HTML/JS. 
+      React's component model lets each page be built independently and reused — 
+      the node health card component, for example, is written once and used in both 
+      the Monitoring page and the Dashboard overview. State management and 
+      automatic re-rendering when data changes are built in.</p>
+    </div>
+  </div>
+
+  <!-- Tech Stack -->
+  <div class="section">
+    <h2 class="blue">Tech Stack</h2>
+
+    <div class="stack-grid">
+      <div class="stack-card">
+        <h4>UI Framework</h4>
+        <div class="name">React</div>
+        <div class="desc">Component-based JavaScript framework. Each page and UI element is a reusable React component. State management handles live data updates.</div>
+      </div>
+      <div class="stack-card">
+        <h4>Web Server</h4>
+        <div class="name">nginx</div>
+        <div class="desc">Serves the compiled React build (static HTML/JS/CSS). Also handles SPA routing — all URL paths return index.html so React Router handles navigation.</div>
+      </div>
+      <div class="stack-card">
+        <h4>API Communication</h4>
+        <div class="name">Fetch / Axios</div>
+        <div class="desc">All API calls go to the Flask backend. JWT token stored in localStorage is attached to every request as Authorization: Bearer header.</div>
+      </div>
+      <div class="stack-card">
+        <h4>Charts</h4>
+        <div class="name">SVG Charts</div>
+        <div class="desc">Custom SVG-based charts for benchmark results. Interactive hover tooltips, color-coded efficiency bars, and ideal vs actual speedup lines.</div>
+      </div>
+      <div class="stack-card">
+        <h4>Routing</h4>
+        <div class="name">React Router</div>
+        <div class="desc">Client-side routing between the 7 pages. No page reload on navigation — the SPA loads once and React handles all URL changes.</div>
+      </div>
+      <div class="stack-card">
+        <h4>Deployment</h4>
+        <div class="name">Docker + k3s</div>
+        <div class="desc">React build output copied into nginx Docker image. Deployed as 2 k3s replicas with anti-affinity — same pattern as backend.</div>
+      </div>
+    </div>
+
+    <h3>How the Frontend Talks to the Backend</h3>
+    <p>
+      Every page in EdgeGuard needs data from the backend. The pattern is always the same: 
+      React component mounts → calls backend API with JWT token → receives JSON → 
+      renders data. Live pages (Camera, Monitoring) poll the API every few seconds 
+      to keep data fresh.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">javascript</span><span class="code-title">Standard API call pattern used across all pages</span></div>
+      <pre><span class="c-gray">// Standard API call pattern — used on every page</span>
+<span class="c-blue">const</span> fetchData = <span class="c-blue">async</span> () => {
+  <span class="c-blue">const</span> token = localStorage.getItem(<span class="c-green">'token'</span>);
+  
+  <span class="c-blue">const</span> response = <span class="c-blue">await</span> fetch(<span class="c-green">`${API_BASE}/api/alerts?page=${page}`</span>, {
+    headers: {
+      <span class="c-green">'Authorization'</span>: <span class="c-green">`Bearer ${token}`</span>,
+      <span class="c-green">'Content-Type'</span>: <span class="c-green">'application/json'</span>
+    }
+  });
+
+  <span class="c-blue">if</span> (response.status === <span class="c-orange">401</span>) {
+    <span class="c-gray">// Token expired — redirect to login</span>
+    localStorage.removeItem(<span class="c-green">'token'</span>);
+    navigate(<span class="c-green">'/login'</span>);
+    <span class="c-blue">return</span>;
+  }
+
+  <span class="c-blue">const</span> data = <span class="c-blue">await</span> response.json();
+  setAlerts(data.alerts);
+  setTotalPages(data.total_pages);
+};
+
+<span class="c-gray">// Auto-refresh every 10 seconds for live pages</span>
+useEffect(() => {
+  fetchData();
+  <span class="c-blue">const</span> interval = setInterval(fetchData, <span class="c-orange">10000</span>);
+  <span class="c-blue">return</span> () => clearInterval(interval);  <span class="c-gray">// cleanup on unmount</span>
+}, [page]);</pre>
+    </div>
+  </div>
+
+  <!-- The 7 Pages -->
+  <div class="section">
+    <h2 class="orange">The 7 Pages</h2>
+
+    <!-- Page 1 -->
+    <div class="page-card green">
+      <div class="page-num">Page 1</div>
+      <div class="page-title">🎥 Live Camera</div>
+      <p>
+        Displays a real-time video feed from the Raspberry Pi 4 AI Camera with 
+        AI detection overlays. Each detected person has a bounding box showing 
+        their classification (<b>face_visible</b> in green, <b>face_covered</b> in red) 
+        and the confidence score percentage.
+      </p>
+      <h4>How it works</h4>
+      <p>
+        The backend proxies the ZMQ video stream from Pi4 as an MJPEG HTTP stream at 
+        <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">/api/stream</code>. 
+        The React frontend renders this as a standard HTML <code>&lt;img&gt;</code> tag 
+        pointing to the stream endpoint — the browser handles MJPEG rendering natively. 
+        Detection bounding boxes are drawn on a transparent canvas overlay positioned 
+        exactly on top of the video element. The frontend polls 
+        <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">/api/latest-detections</code> 
+        every 100ms to get current bounding box coordinates and labels.
+      </p>
+      <div class="page-meta">
+        <span class="page-tag">API: /api/stream</span>
+        <span class="page-tag">API: /api/latest-detections</span>
+        <span class="page-tag">Polling: 100ms</span>
+        <span class="page-tag">Canvas overlay</span>
+      </div>
+    </div>
+
+    <!-- Page 2 -->
+    <div class="page-card">
+      <div class="page-num">Page 2</div>
+      <div class="page-title">🔔 Alerts</div>
+      <p>
+        Paginated history of all suspicious events detected by the AI. Each alert shows 
+        the event type, confidence score, timestamp, camera ID, and the snapshot image 
+        fetched from MinIO via a presigned URL. Alerts are numbered with a per-alert ID 
+        for easy reference during incident review.
+      </p>
+      <h4>How it works</h4>
+      <p>
+        The frontend calls <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">/api/alerts?page=&lt;n&gt;&limit=10</code> 
+        on load and on every page change. The backend returns a paginated JSON response 
+        including presigned MinIO image URLs. The frontend renders each alert as a card 
+        with the snapshot image, confidence badge, and timestamp. 
+        Navigation uses <b>First</b> / <b>Previous</b> / <b>Next</b> / <b>Last</b> buttons 
+        with the current page and total shown. Individual alerts can be deleted — 
+        this calls <code>DELETE /api/alerts/&lt;id&gt;</code> which removes both 
+        the database record and the MinIO snapshot.
+      </p>
+      <div class="page-meta">
+        <span class="page-tag">API: /api/alerts</span>
+        <span class="page-tag">Pagination: First/Last</span>
+        <span class="page-tag">MinIO presigned URLs</span>
+        <span class="page-tag">Delete support</span>
+      </div>
+    </div>
+
+    <!-- Page 3 -->
+    <div class="page-card purple">
+      <div class="page-num">Page 3</div>
+      <div class="page-title">📊 Cluster Monitoring</div>
+      <p>
+        Live health grid showing all 10 cluster nodes with real-time CPU usage, 
+        RAM usage, uptime, and online/offline status. Service health panel shows 
+        whether the Detection Service, Backend API, Prometheus, and Grafana are running. 
+        Direct link to the Grafana dashboard for deeper time-series inspection.
+      </p>
+      <h4>How it works</h4>
+      <p>
+        Polls <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">/api/system/status</code> 
+        every 10 seconds. The backend queries Prometheus for each node's current CPU and RAM, 
+        checks service pod status via the Kubernetes API, and returns a unified JSON response. 
+        Each node is rendered as a card with a color indicator — green (healthy), 
+        yellow (high load), red (offline). CPU and RAM are shown as percentage bars. 
+        If a node does not respond to Prometheus scrapes, it shows as offline immediately.
+      </p>
+      <div class="page-meta">
+        <span class="page-tag">API: /api/system/status</span>
+        <span class="page-tag">Polling: 10s</span>
+        <span class="page-tag">Prometheus data</span>
+        <span class="page-tag">10 node cards</span>
+      </div>
+    </div>
+
+    <!-- Page 4 -->
+    <div class="page-card orange">
+      <div class="page-num">Page 4</div>
+      <div class="page-title">⚡ Auto-Scaler</div>
+      <p>
+        Shows the current cluster CPU average and the auto-scaling status. 
+        When cluster CPU exceeds a configurable threshold, the Pi4 sensor-node 
+        automatically joins the k3s cluster as an emergency compute node, 
+        adding 4 more cores. When CPU drops below the threshold, it gracefully leaves.
+      </p>
+      <h4>How it works</h4>
+      <p>
+        The backend reads cluster-wide CPU average from Prometheus every 10 seconds. 
+        When the threshold is exceeded, it executes a <code>kubectl</code> command 
+        to add pi4 as a k3s worker node. The frontend polls 
+        <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">/api/autoscaler/status</code> 
+        and shows the current CPU gauge, threshold setting (adjustable from the UI), 
+        and the Pi4 join/leave history log. The threshold can be changed live 
+        from the frontend — the new value is sent to the backend via a POST request 
+        and takes effect on the next polling cycle.
+      </p>
+      <div class="page-meta">
+        <span class="page-tag">API: /api/autoscaler/status</span>
+        <span class="page-tag">Configurable threshold</span>
+        <span class="page-tag">Pi4 join/leave log</span>
+        <span class="page-tag">Prometheus CPU average</span>
+      </div>
+    </div>
+
+    <!-- Page 5 -->
+    <div class="page-card red">
+      <div class="page-num">Page 5</div>
+      <div class="page-title">🗂️ Pod Distribution</div>
+      <p>
+        Visual overview of how Kubernetes pods are distributed across all cluster nodes. 
+        Shows which pods are running on which Pi3 nodes — useful for verifying that 
+        anti-affinity rules are working correctly (e.g. confirming backend Replica 1 
+        and Replica 2 are on different nodes).
+      </p>
+      <h4>How it works</h4>
+      <p>
+        Calls <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">/api/pods</code> 
+        which queries the Kubernetes API server for all running pods and their node assignments. 
+        The frontend renders a grid — each column is a node, each row is a pod. 
+        Pods are color-coded by namespace or application type. 
+        This page makes it visually obvious when a node is overloaded with pods 
+        or when the anti-affinity rules have placed replicas correctly on separate nodes.
+      </p>
+      <div class="page-meta">
+        <span class="page-tag">API: /api/pods</span>
+        <span class="page-tag">Kubernetes API</span>
+        <span class="page-tag">Node × Pod grid</span>
+        <span class="page-tag">Color-coded namespaces</span>
+      </div>
+    </div>
+
+    <!-- Page 6 -->
+    <div class="page-card green">
+      <div class="page-num">Page 6</div>
+      <div class="page-title">📈 Benchmark Results</div>
+      <p>
+        Interactive benchmark results for all 4 tasks — Monte Carlo Pi, Matrix Multiplication, 
+        HPL, and Task Distributor. Features speedup charts, runtime bars, hover tooltips 
+        with exact values, and an <b>MPI Based / Non-MPI toggle</b> to filter between 
+        MPI benchmarks (Tasks 2 and 3) and the Task Distributor (Task 4).
+      </p>
+      <h4>How it works</h4>
+      <p>
+        Calls <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">/api/benchmarks</code> 
+        on load to fetch all benchmark data from PostgreSQL. Data is processed client-side 
+        to compute speedup (time at 1 core / time at N cores), efficiency, and min/max/mean. 
+        Charts are built with custom SVG — bar charts for runtime, line charts for speedup 
+        vs ideal. Each bar has an interactive tooltip on hover showing exact values.
+        The MPI/Non-MPI toggle filters which benchmark cards are shown — 
+        Monte Carlo Pi and Matrix Multiply appear under MPI, 
+        Task Distributor appears under Non-MPI. HPL (GFLOPS) is shown separately 
+        as it measures a different metric.
+      </p>
+      <h4>Chart features</h4>
+      <p>
+        — Color coding: green (&gt;85% efficiency), yellow (50–85%), red (&lt;50% / parallelization limit reached)<br>
+        — Ideal speedup line overlaid on actual speedup bars<br>
+        — Problem size selector tabs (0.1M, 1M, 10M, 100M, 1B, 10B for Monte Carlo)<br>
+        — N size selector for Matrix Multiply (N=1000 to N=4000)<br>
+        — Min/Max error bars showing run variance<br>
+        — Values displayed on each bar (Prof. Baun's format)
+      </p>
+      <div class="page-meta">
+        <span class="page-tag">API: /api/benchmarks</span>
+        <span class="page-tag">MPI / Non-MPI toggle</span>
+        <span class="page-tag">Custom SVG charts</span>
+        <span class="page-tag">Hover tooltips</span>
+        <span class="page-tag">Color-coded efficiency</span>
+      </div>
+    </div>
+
+    <!-- Page 7 -->
+    <div class="page-card">
+      <div class="page-num">Page 7</div>
+      <div class="page-title">👤 User Administration</div>
+      <p>
+        Admin page for managing EdgeGuard user accounts. Lists all users with their 
+        username, role (admin/viewer), and creation date. Admins can create new users 
+        with a password and role, and delete existing users. Regular viewers cannot 
+        access this page — it is protected by role-based access control.
+      </p>
+      <h4>How it works</h4>
+      <p>
+        Calls <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">/api/users</code> 
+        to list users. Create form sends a POST with username, password, and role. 
+        Delete button sends DELETE to <code>/api/users/&lt;id&gt;</code>. 
+        The backend validates that the requesting user has admin role before allowing 
+        any user management operation. Non-admin users who navigate to this URL 
+        are shown a "Not authorized" message — the backend also enforces this 
+        server-side regardless of what the frontend shows.
+      </p>
+      <div class="page-meta">
+        <span class="page-tag">API: /api/users</span>
+        <span class="page-tag">Role-based access</span>
+        <span class="page-tag">Create / Delete users</span>
+        <span class="page-tag">Admin only</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dark/Light Mode -->
+  <div class="section">
+    <h2 class="purple">Dark / Light Mode</h2>
+    <p>
+      All 7 pages support both dark and light mode. The toggle button is in the 
+      navigation bar — clicking it switches all colors instantly without a page reload. 
+      The chosen theme is saved in <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">localStorage</code> 
+      so it persists across browser sessions.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">javascript</span><span class="code-title">Theme implementation — CSS variables + React state</span></div>
+      <pre><span class="c-gray">// Theme toggle — stored in localStorage</span>
+<span class="c-blue">const</span> [isDark, setIsDark] = useState(
+  localStorage.getItem(<span class="c-green">'theme'</span>) === <span class="c-green">'dark'</span>
+);
+
+<span class="c-blue">const</span> toggleTheme = () => {
+  <span class="c-blue">const</span> newTheme = !isDark;
+  setIsDark(newTheme);
+  localStorage.setItem(<span class="c-green">'theme'</span>, newTheme ? <span class="c-green">'dark'</span> : <span class="c-green">'light'</span>);
+  <span class="c-gray">// Apply to root element — all CSS variables update instantly</span>
+  document.documentElement.setAttribute(<span class="c-green">'data-theme'</span>, newTheme ? <span class="c-green">'dark'</span> : <span class="c-green">'light'</span>);
+};</pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">css</span><span class="code-title">CSS variables for theming</span></div>
+      <pre><span class="c-gray">/* Light mode (default) */</span>
+<span class="c-green">:root</span> {
+  --bg: #f0f4f8;
+  --surface: #ffffff;
+  --text: #0f172a;
+  --border: #e2e8f0;
+}
+
+<span class="c-gray">/* Dark mode — overrides same variables */</span>
+<span class="c-green">[data-theme="dark"]</span> {
+  --bg: #0b0f1a;
+  --surface: #111827;
+  --text: #e2e8f0;
+  --border: #1e2d45;
+}
+
+<span class="c-gray">/* All components use variables — theme switch is instant */</span>
+<span class="c-green">.card</span> {
+  background: var(--surface);   <span class="c-gray">/* automatically changes with theme */</span>
+  color: var(--text);
+  border: 1px solid var(--border);
+}</pre>
+    </div>
+  </div>
+
+  <!-- nginx SPA config -->
+  <div class="section">
+    <h2>nginx Configuration for React SPA</h2>
+    <p>
+      React Router handles client-side navigation — when a user goes to 
+      <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">/alerts</code> 
+      or <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">/monitoring</code>, 
+      the browser requests that URL from the server. Without special nginx config, 
+      the server would return 404 because those files don't exist on disk. 
+      The fix is to make nginx always return <code>index.html</code> for any URL — 
+      React Router then reads the URL and shows the correct page.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">nginx</span><span class="code-title">nginx.conf — SPA routing fix</span></div>
+      <pre><span class="c-blue">server</span> {
+    <span class="c-yellow">listen</span> 80;
+    <span class="c-yellow">root</span> /usr/share/nginx/html;
+    <span class="c-yellow">index</span> index.html;
+
+    <span class="c-gray"># Serve static files (JS, CSS, images) directly</span>
+    <span class="c-blue">location</span> ~* \.(js|css|png|jpg|svg|ico)$ {
+        <span class="c-yellow">expires</span> 1y;
+        <span class="c-yellow">add_header</span> Cache-Control <span class="c-green">"public, immutable"</span>;
+    }
+
+    <span class="c-gray"># All other URLs → return index.html so React Router handles them</span>
+    <span class="c-blue">location</span> / {
+        <span class="c-yellow">try_files</span> $uri $uri/ /index.html;
+    }
+}</pre>
+    </div>
+  </div>
+
+  <!-- k3s Deployment -->
+  <div class="section">
+    <h2 class="red">k3s Deployment</h2>
+    <p>
+      The frontend is built with <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">npm run build</code> 
+      which produces a static <code>dist/</code> folder of HTML, CSS, and JavaScript. 
+      This is copied into an nginx Docker image and deployed as a k3s Deployment 
+      with 2 replicas and pod anti-affinity — same pattern as the backend.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">dockerfile</span><span class="code-title">Dockerfile — build and serve React app</span></div>
+      <pre><span class="c-gray"># Stage 1: Build React app</span>
+<span class="c-blue">FROM</span> node:18-alpine <span class="c-blue">AS</span> builder
+<span class="c-blue">WORKDIR</span> /app
+<span class="c-blue">COPY</span> package*.json ./
+<span class="c-blue">RUN</span> npm install
+<span class="c-blue">COPY</span> . .
+<span class="c-blue">RUN</span> npm run build
+
+<span class="c-gray"># Stage 2: Serve with nginx</span>
+<span class="c-blue">FROM</span> nginx:alpine
+<span class="c-blue">COPY</span> --from=builder /app/dist /usr/share/nginx/html
+<span class="c-blue">COPY</span> nginx.conf /etc/nginx/conf.d/default.conf
+<span class="c-blue">EXPOSE</span> 80</pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">Check frontend is running in k3s</span></div>
+      <pre><span class="c-gray"># Both frontend pods should show Running on different nodes</span>
+kubectl get pods -A -o wide | grep frontend
+
+<span class="c-gray"># Check service and NodePort</span>
+kubectl get svc -A | grep frontend
+
+<span class="c-gray"># View frontend logs</span>
+kubectl logs -l app=edgeguard-frontend --all-containers</pre>
+    </div>
+
+    <div class="finding">
+      <h4>✅ Zero-downtime deployment</h4>
+      <p>When updating the frontend (new build), k3s performs a rolling update — 
+      it starts a new pod with the updated image, waits for it to become healthy, 
+      then terminates the old pod. With 2 replicas, one is always serving traffic 
+      during the update. Users never see a downtime or blank page during deployments.</p>
+    </div>
+  </div>
+
+  <!-- Key Findings -->
+  <div class="section">
+    <h2>Key Findings</h2>
+
+    <div class="finding">
+      <h4>✅ 7 fully functional pages — all connected to live backend data</h4>
+      <p>Every page fetches real data from the Flask API with JWT authentication. 
+      No mock data or hardcoded values — what you see in the demo is the actual 
+      live system state.</p>
+    </div>
+    <div class="finding">
+      <h4>✅ Benchmark Results page replicates Prof. Baun's chart format</h4>
+      <p>Runtime bars (top), speedup bars (bottom), values on bars, color-coded by efficiency, 
+      ideal line overlay — exactly matching the format from lecture slides. 
+      The MPI/Non-MPI toggle and problem size selector make it easy to navigate 
+      all 4 benchmarks interactively during the presentation.</p>
+    </div>
+    <div class="finding warn">
+      <h4>⚠️ Backend URL is hardcoded to cluster IP</h4>
+      <p>The React app has the backend URL set to <code>http://10.10.10.1:30800</code>. 
+      This only works when the browser is on the same network as the cluster. 
+      Outside the cluster LAN (e.g. from a phone on mobile data), the app loads 
+      but API calls fail. For the presentation, the laptop must be connected 
+      to the cluster hotspot.</p>
+    </div>
+    <div class="finding info">
+      <h4>🔍 SPA vs Multi-Page Application</h4>
+      <p>A traditional web app would reload the full page on every navigation — 
+      fetching HTML from the server each time. A React SPA loads once and handles 
+      all navigation client-side. This gives instant page transitions (no network round-trip), 
+      persistent state across pages (JWT token, theme choice), and a native app-like feel. 
+      The tradeoff is initial load time — the entire React bundle downloads on first visit.</p>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <a href="task7.html" class="nav-btn prev">← Task 7 — Backend</a>
+    <a href="task9.html" class="nav-btn next">Task 9 — Telegram Bot →</a>
+  </div>
+
+</div>
+
+<footer>
+  EdgeGuard SS2026 · Frankfurt University of Applied Sciences · Prof. Dr. Christian Baun ·
+  <a href="index.html">← Back to Docs</a> ·
+  <a href="https://github.com/nauman-iftikhar/Edgeguard">GitHub</a> ·
+  Presentation: July 16, 2026 · Room 1-234 · 14:15–17:15
+</footer>
+
+</body>
+</html>

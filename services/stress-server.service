@@ -1,0 +1,17 @@
+[Unit]
+Description=EdgeGuard Stress Test Server (stress_server.py)
+After=network.target k3s.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin
+ExecStart=/usr/bin/python3 /home/admin/stress_server.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/admin/stress_server.log
+StandardError=append:/home/admin/stress_server.log
+
+[Install]
+WantedBy=multi-user.target

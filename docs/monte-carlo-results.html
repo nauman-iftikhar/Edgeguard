@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monte Carlo Pi — Parallel Scaling Results | EdgeGuard SS2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f7fa; color: #1a1a2e; }
+
+  header {
+    background: linear-gradient(135deg, #1a3a5c 0%, #0d2137 100%);
+    color: white; padding: 32px 40px;
+    border-bottom: 4px solid #1D9E75;
+  }
+  header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 6px; }
+  header p { color: #93c5fd; font-size: 1rem; }
+  header .meta { margin-top: 12px; display: flex; gap: 24px; flex-wrap: wrap; }
+  header .meta span { background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+  .section { background: white; border-radius: 12px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .section h2 { font-size: 1.3rem; color: #1a3a5c; margin-bottom: 6px; border-left: 4px solid #1D9E75; padding-left: 12px; }
+  .section p { color: #555; font-size: 0.95rem; line-height: 1.6; margin-top: 8px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab { padding: 8px 20px; border-radius: 6px; border: 2px solid #1a3a5c; background: white;
+         color: #1a3a5c; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; }
+  .tab.active { background: #1a3a5c; color: white; }
+  .tab:hover:not(.active) { background: #f0f4ff; }
+
+  .view-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .view-tab { padding: 6px 16px; border-radius: 6px; border: 2px solid #1D9E75; background: white;
+              color: #1D9E75; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; }
+  .view-tab.active { background: #1D9E75; color: white; }
+
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 768px) { .chart-grid { grid-template-columns: 1fr; } }
+
+  .chart-box { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+  .chart-box h3 { font-size: 0.95rem; color: #374151; margin-bottom: 12px; text-align: center; }
+  .chart-box canvas { max-height: 280px; }
+
+  .stats-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 12px; }
+  .stats-table th { background: #1a3a5c; color: white; padding: 10px 14px; text-align: left; }
+  .stats-table td { padding: 9px 14px; border-bottom: 1px solid #f0f0f0; }
+  .stats-table tr:hover td { background: #f5f7ff; }
+  .stats-table .plateau { background: #fff3cd !important; }
+  .stats-table .good { color: #1D9E75; font-weight: 600; }
+  .stats-table .warn { color: #d97706; font-weight: 600; }
+  .stats-table .bad { color: #dc2626; font-weight: 600; }
+
+  .finding-box { background: #f0fdf4; border-left: 4px solid #1D9E75; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .finding-box.warn { background: #fffbeb; border-color: #d97706; }
+  .finding-box.info { background: #eff6ff; border-color: #2563a8; }
+  .finding-box h4 { font-size: 0.95rem; margin-bottom: 6px; }
+  .finding-box p { font-size: 0.9rem; color: #444; }
+
+  .plateau-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .plateau-table th { background: #374151; color: white; padding: 10px 14px; }
+  .plateau-table td { padding: 9px 14px; border-bottom: 1px solid #e5e7eb; text-align: center; }
+  .plateau-table tr:hover td { background: #f9fafb; }
+
+  footer { text-align: center; padding: 24px; color: #666; font-size: 0.85rem; border-top: 1px solid #e5e7eb; margin-top: 24px; }
+  footer a { color: #1D9E75; text-decoration: none; }
+
+  .baun-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  @media (max-width: 700px) {
+    .baun-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-grid { grid-template-columns: 1fr !important; }
+    header h1 { font-size: 1.4rem; }
+    header .meta { gap: 8px; }
+    .tabs { gap: 4px; }
+    .tab { padding: 6px 12px; font-size: 0.82rem; }
+    .section { padding: 18px; }
+  }
+  @media (max-width: 480px) {
+    .baun-grid { grid-template-columns: 1fr; }
+    header { padding: 20px; }
+  }
+
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Monte Carlo Pi — Parallel Scaling Results</h1>
+  <p>MPI-based embarrassingly parallel benchmark on a heterogeneous Raspberry Pi cluster</p>
+  <div class="meta">
+    <span>🏫 Frankfurt University of Applied Sciences</span>
+    <span>📅 Cloud Computing SS2026</span>
+    <span>👨‍🏫 Prof. Dr. Christian Baun</span>
+    <span>🖥️ 8× Raspberry Pi 3B+ · 32 cores</span>
+    <span>🔬 3–5 runs per configuration · Fan-cooled</span>
+  </div>
+</header>
+
+<div id="loadingMsg" style="display:none;text-align:center;padding:40px;font-size:1.1rem;color:#1D9E75;font-weight:bold">⏳ Loading benchmark data from CSV...</div>
+<div class="container">
+
+<!-- Overview -->
+<div class="section">
+  <h2>Experiment Overview</h2>
+  <p>We estimated π using the Monte Carlo method with MPI parallelization. Each rank independently generates random points and checks if they fall inside a unit circle. A single <code>MPI_Reduce</code> at the end combines results — making this an <strong>embarrassingly parallel</strong> workload with minimal communication overhead.</p>
+  <p style="margin-top:8px">We tested <strong>6 core counts</strong> (1, 2, 4, 8, 16, 32) across <strong>5 problem sizes</strong> (1M to 10B points), running each configuration 3–5 times on an idle cluster with active fan cooling. Pi5 was excluded from compute — all 32 cores are from 8× Pi3 nodes (4 cores each).</p>
+</div>
+
+<!-- Main Charts -->
+<div class="section">
+  <h2>Runtime & Speedup Charts</h2>
+  <p>Select problem size and view type. Charts replicate Prof. Baun's methodology from lecture slides.</p>
+
+  <div style="margin-top:16px">
+    <strong style="font-size:0.9rem;color:#555">PROBLEM SIZE:</strong>
+    <div class="tabs" id="sizeTabs" style="margin-top:8px">
+      <button class="tab" onclick="selectSize('0.1M',this)">0.1M</button>
+      <button class="tab active" onclick="selectSize('1M',this)">1M</button>
+      <button class="tab" onclick="selectSize('10M',this)">10M</button>
+      <button class="tab" onclick="selectSize('100M',this)">100M</button>
+      <button class="tab" onclick="selectSize('1B',this)">1B</button>
+      <button class="tab" onclick="selectSize('10B',this)">10B</button>
+    </div>
+    <strong style="font-size:0.9rem;color:#555">VIEW:</strong>
+    <div class="view-tabs" style="margin-top:8px">
+      <button class="view-tab active" onclick="selectView('runtime',this)">⏱ Runtime</button>
+      <button class="view-tab" onclick="selectView('speedup',this)">⚡ Speedup</button>
+      <button class="view-tab" onclick="selectView('both',this)">📊 Both</button>
+    </div>
+  </div>
+
+  <div id="chartsArea" style="margin-top:16px">
+    <div class="chart-grid">
+      <div class="chart-box" id="runtimeBox">
+        <h3 id="runtimeTitle">Runtime — 1M points (Mean of runs)</h3>
+        <canvas id="runtimeChart"></canvas>
+      </div>
+      <div class="chart-box" id="speedupBox">
+        <h3 id="speedupTitle">Speedup — 1M points</h3>
+        <canvas id="speedupChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Table -->
+  <div style="margin-top:20px;overflow-x:auto">
+    <table class="stats-table" id="statsTable">
+      <thead>
+        <tr>
+          <th>Cores</th>
+          <th>Mean Time (s)</th>
+          <th>Std Dev (s)</th>
+          <th>Speedup</th>
+          <th>Ideal</th>
+          <th>Efficiency</th>
+          <th>Runs</th>
+        </tr>
+      </thead>
+      <tbody id="statsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- All sizes overview -->
+<div class="section">
+  <h2>All Problem Sizes — Speedup Overview</h2>
+  <p>Speedup at each core count across all problem sizes. Shows how larger problems approach ideal scaling.</p>
+  <div class="chart-box" style="margin-top:16px">
+    <canvas id="overviewChart" style="max-height:350px"></canvas>
+  </div>
+</div>
+
+<!-- REPLACE the plateau section in the HTML with this -->
+
+<div class="section">
+  <h2>Finding the Parallelization Limit (Amdahl's Law in Practice)</h2>
+  <p>Prof. Baun's key challenge: <em>"Find the point where the program cannot be parallelized anymore."</em> We systematically investigated where our cluster hits this limit and what causes it. Single runs were used for preliminary investigation across problem sizes from 1B to 25B.</p>
+
+  <div class="finding-box warn" style="margin-top:16px">
+    <h4>⚠️ Parallelization Limit Found: 8 Cores (2 Nodes)</h4>
+    <p>At all problem sizes tested, <strong>8 cores is the effective parallelization limit</strong> on our cluster. Beyond 8 cores, crossing from 2 to 4 physical nodes introduces MPI communication overhead that exceeds the compute gain — exactly the serial fraction Amdahl's Law identifies. Adding more cores (16) provides no meaningful benefit, while 32 cores recovers by utilizing all 8 nodes symmetrically.</p>
+  </div>
+
+  <!-- Plateau data table -->
+  <div style="overflow-x:auto;margin-top:16px">
+    <table class="plateau-table">
+      <thead>
+        <tr>
+          <th>Problem Size</th>
+          <th>8 Cores (s)</th>
+          <th>16 Cores (s)</th>
+          <th>8→16 Improvement</th>
+          <th>32 Cores (s)</th>
+          <th>16→32 Improvement</th>
+          <th>Switch Topology</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1B</strong></td>
+          <td>25.46</td>
+          <td>25.37</td>
+          <td style="color:#dc2626;font-weight:600">0.4% ❌</td>
+          <td>12.57</td>
+          <td style="color:#1D9E75;font-weight:600">50.4% ✅</td>
+          <td>2 switches</td>
+        </tr>
+        <tr>
+          <td><strong>5B</strong></td>
+          <td>126.42</td>
+          <td>124.98</td>
+          <td style="color:#dc2626;font-weight:600">1.1% ❌</td>
+          <td>62.31</td>
+          <td style="color:#1D9E75;font-weight:600">50.1% ✅</td>
+          <td>2 switches</td>
+        </tr>
+        <tr>
+          <td><strong>7.5B</strong></td>
+          <td>189.87</td>
+          <td>186.95</td>
+          <td style="color:#dc2626;font-weight:600">1.5% ❌</td>
+          <td>93.74</td>
+          <td style="color:#1D9E75;font-weight:600">49.8% ✅</td>
+          <td>2 switches</td>
+        </tr>
+        <tr>
+          <td><strong>10B</strong></td>
+          <td>252.96</td>
+          <td>250.17</td>
+          <td style="color:#dc2626;font-weight:600">1.1% ❌</td>
+          <td>125.02</td>
+          <td style="color:#1D9E75;font-weight:600">50.0% ✅</td>
+          <td>2 switches</td>
+        </tr>
+        <tr style="background:#fffbeb">
+          <td><strong>10B</strong> <span style="font-size:0.8rem;color:#666">(after switch rearrangement)</span></td>
+          <td>256.23</td>
+          <td>249.34</td>
+          <td style="color:#d97706;font-weight:600">2.7% ⬆️</td>
+          <td>124.18</td>
+          <td style="color:#1D9E75;font-weight:600">50.2% ✅</td>
+          <td>1+1 switches</td>
+        </tr>
+        <tr>
+          <td><strong>25B</strong></td>
+          <td>640</td>
+          <td>624</td>
+          <td style="color:#dc2626;font-weight:600">2.5% ❌</td>
+          <td>311.4</td>
+          <td style="color:#1D9E75;font-weight:600">50.1% ✅</td>
+          <td>1+1 switches</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Trend chart -->
+  <div class="chart-box" style="margin-top:20px">
+    <h3>Does Problem Size Move the Parallelization Limit? (8→16 Core Improvement)</h3>
+    <canvas id="plateauTrendChart" style="max-height:220px"></canvas>
+  </div>
+
+  <!-- Switch topology investigation -->
+  <div style="margin-top:20px">
+    <h3 style="color:#1a3a5c;font-size:1rem;margin-bottom:12px">Switch Topology Investigation</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="finding-box warn">
+        <h4>Before — 2 Switch Setup</h4>
+        <p><strong>Switch 1:</strong> Pi5 + pi3-01 (2 devices)<br>
+        <strong>Switch 2:</strong> pi3-02 to pi3-08 (7 devices)<br>
+        <strong>Effect:</strong> ALL inter-Pi3 MPI communication crossed the inter-switch uplink</p>
+        <p style="margin-top:6px">Ping latency pi3-01→pi3-06: <strong>0.749ms</strong> (mdev: 0.205ms)</p>
+      </div>
+      <div class="finding-box">
+        <h4>After — Rearranged Setup</h4>
+        <p><strong>Switch 1:</strong> Pi5 + pi3-01 to pi3-06 (7 devices)<br>
+        <strong>Switch 2:</strong> pi3-07, pi3-08 (2 devices)<br>
+        <strong>Effect:</strong> Only 2 nodes cross the inter-switch boundary</p>
+        <p style="margin-top:6px">Ping latency pi3-01→pi3-06: <strong>0.433ms</strong> (mdev: 0.061ms) — <span style="color:#1D9E75">42% faster, 3.4× less jitter</span></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="finding-box info" style="margin-top:16px">
+    <h4>🔍 Answer to Prof. Baun's Question</h4>
+    <p><strong>Problem size effect:</strong> Increasing from 1B to 25B (25× larger) improved 8→16 core performance by only 0.4% → 2.5% — a marginal effect. To achieve clear 2× improvement at 16 cores, problem sizes of ~500B+ would theoretically be needed, which is impractical on this hardware.</p>
+    <p style="margin-top:6px"><strong>Switch topology effect:</strong> Rearranging switches improved latency by 42% and reduced jitter by 3.4×, with slight improvement in 8→16 performance (1.1% → 2.7% at 10B). However the plateau persisted.</p>
+    <p style="margin-top:6px"><strong>Final conclusion:</strong> The plateau is primarily a <strong>fundamental MPI communication topology effect</strong> when crossing from 2 to 4 physical nodes. A single switch connecting all 9 devices is the recommended next step to fully eliminate this bottleneck.</p>
+  </div>
+</div>
+
+<!-- Key Findings -->
+<div class="section">
+  <h2>Key Findings</h2>
+
+  <div class="finding-box">
+    <h4>1. Near-ideal scaling for 1→2→4→8 cores</h4>
+    <p>At 1B and 10B points, speedup tracks very closely to the ideal linear line: 2.00× at 2 cores, ~3.95× at 4 cores, ~7.87× at 8 cores. Parallel efficiency exceeds 98% up to 8 cores — the cluster hardware scales extremely well within node boundaries.</p>
+  </div>
+
+  <div class="finding-box warn">
+    <h4>2. Parallelization limit found at 8 cores (2 nodes)</h4>
+    <p>This directly answers Prof. Baun's challenge: <em>"Find the point where the program cannot be parallelized anymore."</em> On our cluster, the effective limit is <strong>8 cores</strong>. Beyond this, MPI communication overhead at the 2→4 node boundary exceeds the compute gain. This is Amdahl's Law made visible — the serial fraction is the inter-node MPI_Reduce communication.</p>
+  </div>
+
+  <div class="finding-box">
+    <h4>3. Problem size has marginal effect on the limit</h4>
+    <p>We tested problem sizes from 1B to 25B (25× increase) to see if larger problems move the parallelization limit. Improvement at 8→16 cores grew from 0.4% to only 2.5% — the limit remains at 8 cores regardless. This confirms the limit is structural (network topology) not computational.</p>
+  </div>
+
+  <div class="finding-box info">
+    <h4>4. Amdahl vs Gustafson — problem size is key</h4>
+    <p>At 1M points: speedup degrades rapidly beyond 4 cores (communication dominates — Amdahl's Law clearly visible). At 10B points: near-linear scaling to 8 cores, then the topology limit. This confirms Prof. Baun's lecture: <em>"A sufficiently large problem can be parallelized efficiently."</em></p>
+  </div>
+
+  <div class="finding-box">
+    <h4>5. Exceptional measurement consistency</h4>
+    <p>Coefficient of variation &lt; 0.5% for all 1B and 10B configurations across 3–5 runs. This demonstrates the cluster operates stably under controlled conditions — idle system, fan cooling, zombie process prevention. The consistency validates the results are real hardware behavior, not measurement noise.</p>
+  </div>
+</div>
+
+<!-- Methodology -->
+<div class="section">
+  <h2>Methodology</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px">
+    <div>
+      <h4 style="color:#1a3a5c;margin-bottom:8px">Cluster Configuration</h4>
+      <ul style="font-size:0.9rem;color:#555;line-height:1.8;padding-left:16px">
+        <li>8× Raspberry Pi 3B+ (32 cores total)</li>
+        <li>Pi5 excluded from compute (coordinator only)</li>
+        <li>k3s-agent stopped on all Pi3 nodes</li>
+        <li>Production services stopped on Pi5</li>
+        <li>Active fan cooling throughout</li>
+        <li>Temperature monitored (kept below 65°C)</li>
+      </ul>
+    </div>
+    <div>
+      <h4 style="color:#1a3a5c;margin-bottom:8px">Benchmark Parameters</h4>
+      <ul style="font-size:0.9rem;color:#555;line-height:1.8;padding-left:16px">
+        <li>Problem sizes: 1M, 10M, 100M, 1B, 10B points</li>
+        <li>Core counts: 1, 2, 4, 8, 16, 32</li>
+        <li>Runs per config: 3–5 (mean reported)</li>
+        <li>Cooldown: 15–30s between runs</li>
+        <li>Zombie process check before each run</li>
+        <li>Shared NFS binary, hostfile-based launch</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</div><!-- end container -->
+
+
+<!-- Baun-Style Summary Charts -->
+<div class="section">
+  <h2>Results Summary — Prof. Baun's Chart Format</h2>
+  <p>Runtime (top row) and Speedup (bottom row) for each problem size. Values shown on bars. Color: <span style="color:#16a34a;font-weight:600">green &gt;85% efficiency</span>, <span style="color:#ca8a04;font-weight:600">yellow 50–85%</span>, <span style="color:#dc2626;font-weight:600">red &lt;50% (parallelization limit)</span>.</p>
+
+  <!-- Runtime Row -->
+  <div style="margin-top:24px">
+    <div style="font-weight:700;color:#1a3a5c;font-size:1rem;border-left:4px solid #1D9E75;padding-left:10px;margin-bottom:16px">
+      Elapsed Real (Wall Clock) Time [s] — Mean of 3–5 Tests
+    </div>
+    <div class="baun-grid">
+      <div class="chart-box">
+        <h3>100,000 points</h3>
+        <canvas id="rt_01M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>1,000,000 points</h3>
+        <canvas id="rt_1M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>10,000,000 points</h3>
+        <canvas id="rt_10M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>100,000,000 points</h3>
+        <canvas id="rt_100M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>1,000,000,000 points</h3>
+        <canvas id="rt_1B" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>10,000,000,000 points</h3>
+        <canvas id="rt_10B" style="max-height:260px"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Speedup Row -->
+  <div style="margin-top:24px">
+    <div style="font-weight:700;color:#1a3a5c;font-size:1rem;border-left:4px solid #2563a8;padding-left:10px;margin-bottom:16px">
+      Speedup (relative to 1 core)
+    </div>
+    <div class="baun-grid">
+      <div class="chart-box">
+        <h3>0.1M points</h3>
+        <canvas id="sp_01M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>1M points</h3>
+        <canvas id="sp_1M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>10M points</h3>
+        <canvas id="sp_10M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>100M points</h3>
+        <canvas id="sp_100M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>1B points</h3>
+        <canvas id="sp_1B" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>10B points</h3>
+        <canvas id="sp_10B" style="max-height:260px"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div id="baunLegend" style="display:flex;gap:24px;margin-top:16px;font-size:0.88rem;align-items:center;flex-wrap:wrap">
+    <span><span style="display:inline-block;width:16px;height:16px;background:#4ade80;border-radius:3px;margin-right:6px;vertical-align:middle"></span>Efficiency &gt;85% — Good scaling</span>
+    <span><span style="display:inline-block;width:16px;height:16px;background:#facc15;border-radius:3px;margin-right:6px;vertical-align:middle"></span>Efficiency 50–85% — Moderate</span>
+    <span><span style="display:inline-block;width:16px;height:16px;background:#f87171;border-radius:3px;margin-right:6px;vertical-align:middle"></span>Efficiency &lt;50% — Parallelization limit reached</span>
+  </div>
+</div>
+
+<footer>
+  <p>EdgeGuard SS2026 · Frankfurt University of Applied Sciences · 
+  <a href="https://github.com/nauman-iftikhar/Edgeguard">GitHub</a> · 
+  <a href="https://nauman-iftikhar.github.io/Edgeguard">Documentation</a></p>
+  <p style="margin-top:6px">Results collected July 2026 · Monte Carlo Pi MPI implementation · OpenMPI</p>
+</footer>
+
+<script>
+// ── Helpers ──────────────────────────────────────────────────
+function mean(arr) {
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+function stdDev(arr) {
+  if (arr.length < 2) return 0;
+  const m = mean(arr);
+  return Math.sqrt(arr.reduce((a, b) => a + (b - m) ** 2, 0) / (arr.length - 1));
+}
+
+// ── Globals ───────────────────────────────────────────────────
+let DATA = {};
+const CORES = [1,2,4,8,16,32];
+const SIZES_ORDER = ['0.1M','1M','10M','100M','1B','10B'];
+let SIZES = [];
+const COLORS = {
+  bar: 'rgba(29,158,117,0.8)',
+  barBorder: 'rgba(29,158,117,1)',
+  ideal: 'rgba(37,99,168,0.7)',
+  plateau: 'rgba(220,38,38,0.8)',
+};
+
+let currentSize = '1B';
+let currentView = 'both';
+let runtimeChart = null;
+let speedupChart = null;
+let overviewChart = null;
+
+// ── Load CSV ──────────────────────────────────────────────────
+async function loadCSV() {
+  const response = await fetch('monte_carlo_results_final.csv');
+  const text = await response.text();
+  const lines = text.trim().split('\n');
+
+  const raw = {};
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i].split(',');
+    if (vals.length < 4) continue;
+    const cores = vals[0].trim();
+    const size  = vals[1].trim();
+    const time  = parseFloat(vals[3].trim());
+    if (isNaN(time)) continue;
+    if (!raw[size]) raw[size] = {};
+    if (!raw[size][cores]) raw[size][cores] = [];
+    raw[size][cores].push(time);
+  }
+
+  DATA = {};
+  for (const size of SIZES_ORDER) {
+    if (!raw[size]) continue;
+    if (!raw[size]['1']) continue;
+    const baseline = mean(raw[size]['1']);
+    DATA[size] = {};
+    for (const cores of ['1','2','4','8','16','32']) {
+      if (!raw[size][cores]) continue;
+      const times = raw[size][cores];
+      const m = mean(times);
+      const s = stdDev(times);
+      const speedup = baseline / m;
+      DATA[size][cores] = {
+        mean: m,
+        std: s,
+        speedup: speedup,
+        ideal: parseInt(cores),
+        efficiency: (speedup / parseInt(cores)) * 100,
+        runs: times.length,
+        min: Math.min(...times),
+        max: Math.max(...times),
+      };
+    }
+  }
+
+  SIZES = SIZES_ORDER.filter(s => DATA[s]);
+}
+
+// ── Chart helpers ─────────────────────────────────────────────
+function getBarColors(size) {
+  return CORES.map(c => {
+    if (!DATA[size] || !DATA[size][String(c)]) return 'rgba(150,150,150,0.5)';
+    const d = DATA[size][String(c)];
+    if (d.efficiency > 85) return 'rgba(29,158,117,0.8)';
+    if (d.efficiency > 50) return 'rgba(234,179,8,0.8)';
+    return 'rgba(220,38,38,0.8)';
+  });
+}
+
+function updateCharts() {
+  if (!DATA[currentSize]) return;
+  const size = currentSize;
+  const d = DATA[size];
+  const means    = CORES.map(c => d[String(c)] ? d[String(c)].mean    : 0);
+  const speedups = CORES.map(c => d[String(c)] ? d[String(c)].speedup : 0);
+  const ideals   = CORES.map(c => c);
+  const barColors = getBarColors(size);
+
+  // Runtime Chart
+  if (runtimeChart) runtimeChart.destroy();
+  const rCtx = document.getElementById('runtimeChart').getContext('2d');
+  runtimeChart = new Chart(rCtx, {
+    type: 'bar',
+    data: {
+      labels: CORES.map(c => c + ' cores'),
+      datasets: [{
+        label: 'Mean Time (s)',
+        data: means,
+        backgroundColor: barColors,
+        borderColor: barColors.map(c => c.replace('0.8','1')),
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const cores = CORES[ctx.dataIndex];
+              const info = d[String(cores)];
+              if (!info) return '';
+              return ['Time: '+ctx.raw.toFixed(4)+'s', 'Speedup: '+info.speedup.toFixed(2)+'x', 'Efficiency: '+info.efficiency.toFixed(1)+'%'];
+            }
+          }
+        }
+      },
+      scales: {
+        y: { title: { display: true, text: 'Elapsed Time [s]' }, beginAtZero: true },
+        x: { title: { display: true, text: 'Number of Cores' } }
+      }
+    }
+  });
+
+  // Speedup Chart
+  if (speedupChart) speedupChart.destroy();
+  const sCtx = document.getElementById('speedupChart').getContext('2d');
+  speedupChart = new Chart(sCtx, {
+    type: 'bar',
+    data: {
+      labels: CORES.map(c => c + ' cores'),
+      datasets: [
+        {
+          label: 'Actual Speedup',
+          data: speedups,
+          backgroundColor: barColors,
+          borderColor: barColors.map(c => c.replace('0.8','1')),
+          borderWidth: 1,
+          order: 2
+        },
+        {
+          label: 'Ideal',
+          data: ideals,
+          type: 'line',
+          borderColor: 'rgba(37,99,168,0.7)',
+          borderDash: [5,5],
+          borderWidth: 2,
+          pointRadius: 3,
+          fill: false,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.datasetIndex === 1) return 'Ideal: '+ctx.raw+'x';
+              const cores = CORES[ctx.dataIndex];
+              const info = d[String(cores)];
+              if (!info) return '';
+              return ['Speedup: '+ctx.raw.toFixed(2)+'x', 'Ideal: '+cores+'x', 'Efficiency: '+info.efficiency.toFixed(1)+'%'];
+            }
+          }
+        }
+      },
+      scales: {
+        y: { title: { display: true, text: 'Speedup' }, beginAtZero: true },
+        x: { title: { display: true, text: 'Number of Cores' } }
+      }
+    }
+  });
+
+  document.getElementById('runtimeTitle').textContent = 'Runtime — '+size+' points (Mean of '+d['1'].runs+' runs)';
+  document.getElementById('speedupTitle').textContent = 'Speedup — '+size+' points vs Ideal';
+
+  updateTable(size);
+  updateVisibility();
+}
+
+function updateTable(size) {
+  const d = DATA[size];
+  if (!d) return;
+  const tbody = document.getElementById('statsBody');
+  tbody.innerHTML = '';
+  CORES.forEach(function(c) {
+    const info = d[String(c)];
+    if (!info) return;
+    const isPlateau = c === 16 && info.efficiency < 55;
+    const effClass = info.efficiency > 90 ? 'good' : info.efficiency > 60 ? 'warn' : 'bad';
+    const row = '<tr class="'+(isPlateau ? 'plateau' : '')+'">'
+      + '<td><strong>'+c+'</strong></td>'
+      + '<td>'+info.mean.toFixed(4)+'s</td>'
+      + '<td>'+info.std.toFixed(4)+'s</td>'
+      + '<td class="'+effClass+'">'+info.speedup.toFixed(2)+'x</td>'
+      + '<td>'+c+'x</td>'
+      + '<td class="'+effClass+'">'+info.efficiency.toFixed(1)+'%</td>'
+      + '<td>'+info.runs+'</td>'
+      + '</tr>';
+    tbody.innerHTML += row;
+  });
+}
+
+function updateVisibility() {
+  const rb = document.getElementById('runtimeBox');
+  const sb = document.getElementById('speedupBox');
+  if (currentView === 'runtime')  { rb.style.display='block'; sb.style.display='none'; }
+  else if (currentView === 'speedup') { rb.style.display='none';  sb.style.display='block'; }
+  else { rb.style.display='block'; sb.style.display='block'; }
+}
+
+function selectSize(size, btn) {
+  currentSize = size;
+  document.querySelectorAll('#sizeTabs .tab').forEach(function(t) { t.classList.remove('active'); });
+  btn.classList.add('active');
+  updateCharts();
+}
+
+function selectView(view, btn) {
+  currentView = view;
+  document.querySelectorAll('.view-tab').forEach(function(t) { t.classList.remove('active'); });
+  btn.classList.add('active');
+  updateVisibility();
+}
+
+function buildOverviewChart() {
+  if (overviewChart) overviewChart.destroy();
+  const ctx = document.getElementById('overviewChart').getContext('2d');
+  const sizeColors = ['#00b4d8','#1D9E75','#2563a8','#d97706','#dc2626','#7c3aed'];
+  const datasets = SIZES.map(function(size, i) {
+    return {
+      label: size + ' points',
+      data: CORES.map(function(c) { return DATA[size] && DATA[size][String(c)] ? DATA[size][String(c)].speedup : 0; }),
+      borderColor: sizeColors[i] || '#999',
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 4,
+      pointBackgroundColor: sizeColors[i] || '#999',
+      tension: 0.1
+    };
+  });
+  datasets.unshift({
+    label: 'Ideal',
+    data: CORES,
+    borderColor: '#999',
+    borderDash: [6,4],
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    pointRadius: 0,
+  });
+  overviewChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: CORES.map(function(c) { return c + ' cores'; }), datasets: datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        y: { title: { display: true, text: 'Speedup' }, beginAtZero: true },
+        x: { title: { display: true, text: 'Number of Cores' } }
+      }
+    }
+  });
+}
+
+function buildBaunCharts() {
+  function barColor(eff) {
+    if (eff > 85) return '#4ade80';
+    if (eff > 50) return '#facc15';
+    return '#f87171';
+  }
+
+  const valuePlugin = {
+    id: 'valueLabels',
+    afterDatasetsDraw: function(chart) {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach(function(ds, i) {
+        chart.getDatasetMeta(i).data.forEach(function(bar, idx) {
+          const val = ds.data[idx];
+          if (!val) return;
+          const label = val >= 100 ? val.toFixed(1) : val >= 1 ? val.toFixed(2) : val.toFixed(3);
+          ctx.save();
+          ctx.fillStyle = '#111';
+          ctx.font = 'bold 10px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, bar.x, bar.y - 4);
+          ctx.restore();
+        });
+      });
+    }
+  };
+
+  SIZES.forEach(function(size) {
+    if (!DATA[size]) return;
+    const d = DATA[size];
+    const means    = CORES.map(function(c) { return d[String(c)] ? d[String(c)].mean      : 0; });
+    const speedups = CORES.map(function(c) { return d[String(c)] ? d[String(c)].speedup   : 0; });
+    const effs     = CORES.map(function(c) { return d[String(c)] ? d[String(c)].efficiency: 0; });
+    const colors   = effs.map(function(e) { return barColor(e); });
+    const labels   = CORES.map(function(c) { return c + 'c'; });
+
+    const commonOpts = function(yLabel) {
+      return {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: yLabel, font: { size: 11 } }, ticks: { font: { size: 10 } } },
+          x: { title: { display: true, text: 'Number of Cores', font: { size: 11 } }, ticks: { font: { size: 10 } } }
+        }
+      };
+    };
+
+    var rtEl = document.getElementById('rt_' + size.replace('.',''));
+    if (rtEl) {
+      new Chart(rtEl, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ data: means, backgroundColor: colors, borderWidth: 0 }] },
+        options: commonOpts('Time [s]'),
+        plugins: [valuePlugin]
+      });
+    }
+
+    var spEl = document.getElementById('sp_' + size.replace('.',''));
+    if (spEl) {
+      new Chart(spEl, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ data: speedups, backgroundColor: colors, borderWidth: 0 }] },
+        options: commonOpts('Speedup'),
+        plugins: [valuePlugin]
+      });
+    }
+  });
+}
+
+function buildPlateauChart() {
+  const sizes = ['1B', '5B', '7.5B', '10B', '25B'];
+  const improvements = [0.4, 1.1, 1.5, 1.1, 2.5];
+  const ctx = document.getElementById('plateauTrendChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sizes,
+      datasets: [{
+        label: '8->16 Core Improvement (%)',
+        data: improvements,
+        backgroundColor: improvements.map(function(v) { return v > 2 ? 'rgba(215,119,6,0.8)' : 'rgba(220,38,38,0.8)'; }),
+        borderColor: improvements.map(function(v) { return v > 2 ? 'rgba(215,119,6,1)' : 'rgba(220,38,38,1)'; }),
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function(ctx) { return 'Improvement: '+ctx.raw+'%'; } } }
+      },
+      scales: {
+        y: { title: { display: true, text: 'Improvement over 8 cores (%)' }, beginAtZero: true, max: 5, ticks: { callback: function(v) { return v + '%'; } } },
+        x: { title: { display: true, text: 'Problem Size' } }
+      }
+    }
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────
+(async function init() {
+  const msg = document.getElementById('loadingMsg');
+  if (msg) msg.style.display = 'block';
+  try {
+    await loadCSV();
+  } catch(e) {
+    console.error('CSV load failed:', e);
+    if (msg) msg.textContent = 'Failed to load data. Make sure CSV file is deployed.';
+    return;
+  }
+  if (msg) msg.style.display = 'none';
+
+  currentSize = '1B';
+  document.querySelectorAll('#sizeTabs .tab').forEach(function(t) {
+    t.classList.toggle('active', t.textContent.trim() === '1B');
+  });
+
+  updateCharts();
+  buildOverviewChart();
+  buildBaunCharts();
+  buildPlateauChart();
+})();
+</script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f7fa; color: #1a1a2e; }
+
+  header {
+    background: linear-gradient(135deg, #1a3a5c 0%, #0d2137 100%);
+    color: white; padding: 32px 40px;
+    border-bottom: 4px solid #1D9E75;
+  }
+  header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 6px; }
+  header p { color: #93c5fd; font-size: 1rem; }
+  header .meta { margin-top: 12px; display: flex; gap: 24px; flex-wrap: wrap; }
+  header .meta span { background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+  .section { background: white; border-radius: 12px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .section h2 { font-size: 1.3rem; color: #1a3a5c; margin-bottom: 6px; border-left: 4px solid #1D9E75; padding-left: 12px; }
+  .section p { color: #555; font-size: 0.95rem; line-height: 1.6; margin-top: 8px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab { padding: 8px 20px; border-radius: 6px; border: 2px solid #1a3a5c; background: white;
+         color: #1a3a5c; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; }
+  .tab.active { background: #1a3a5c; color: white; }
+  .tab:hover:not(.active) { background: #f0f4ff; }
+
+  .view-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .view-tab { padding: 6px 16px; border-radius: 6px; border: 2px solid #1D9E75; background: white;
+              color: #1D9E75; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; }
+  .view-tab.active { background: #1D9E75; color: white; }
+
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 768px) { .chart-grid { grid-template-columns: 1fr; } }
+
+  .chart-box { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+  .chart-box h3 { font-size: 0.95rem; color: #374151; margin-bottom: 12px; text-align: center; }
+  .chart-box canvas { max-height: 280px; }
+
+  .stats-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 12px; }
+  .stats-table th { background: #1a3a5c; color: white; padding: 10px 14px; text-align: left; }
+  .stats-table td { padding: 9px 14px; border-bottom: 1px solid #f0f0f0; }
+  .stats-table tr:hover td { background: #f5f7ff; }
+  .stats-table .plateau { background: #fff3cd !important; }
+  .stats-table .good { color: #1D9E75; font-weight: 600; }
+  .stats-table .warn { color: #d97706; font-weight: 600; }
+  .stats-table .bad { color: #dc2626; font-weight: 600; }
+
+  .finding-box { background: #f0fdf4; border-left: 4px solid #1D9E75; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .finding-box.warn { background: #fffbeb; border-color: #d97706; }
+  .finding-box.info { background: #eff6ff; border-color: #2563a8; }
+  .finding-box h4 { font-size: 0.95rem; margin-bottom: 6px; }
+  .finding-box p { font-size: 0.9rem; color: #444; }
+
+  .plateau-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .plateau-table th { background: #374151; color: white; padding: 10px 14px; }
+  .plateau-table td { padding: 9px 14px; border-bottom: 1px solid #e5e7eb; text-align: center; }
+  .plateau-table tr:hover td { background: #f9fafb; }
+
+  footer { text-align: center; padding: 24px; color: #666; font-size: 0.85rem; border-top: 1px solid #e5e7eb; margin-top: 24px; }
+  footer a { color: #1D9E75; text-decoration: none; }
+
+  .baun-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  @media (max-width: 700px) {
+    .baun-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-grid { grid-template-columns: 1fr !important; }
+    header h1 { font-size: 1.4rem; }
+    header .meta { gap: 8px; }
+    .tabs { gap: 4px; }
+    .tab { padding: 6px 12px; font-size: 0.82rem; }
+    .section { padding: 18px; }
+  }
+  @media (max-width: 480px) {
+    .baun-grid { grid-template-columns: 1fr; }
+    header { padding: 20px; }
+  }
+
+</style>
+</head>
+<body>
+</body>
+</html>

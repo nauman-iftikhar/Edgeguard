@@ -1,0 +1,18 @@
+[Unit]
+Description=EdgeGuard Camera Stream (main_stream1.py)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin
+EnvironmentFile=/home/admin/main_stream1.env
+ExecStart=/usr/bin/python3 /home/admin/main_stream1.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/admin/stream.log
+StandardError=append:/home/admin/stream.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task 6 — AI Inference | EdgeGuard SS2026</title>
+<style>
+  :root {
+    --bg: #f0f4f8; --surface: #ffffff; --surface2: #f8fafc;
+    --border: #e2e8f0; --accent: #0d9e75; --accent2: #2563a8;
+    --text: #0f172a; --text2: #64748b; --text3: #475569;
+    --warn: #d97706; --danger: #dc2626;
+    --code-bg: #1e293b; --code-text: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+
+  header { background: #1a3a5c; padding: 0 40px; border-bottom: 3px solid var(--accent); }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 36px 0 32px; }
+  .breadcrumb { font-size: 0.78rem; color: #93c5fd; margin-bottom: 12px; }
+  .breadcrumb a { color: #6ee7c7; text-decoration: none; }
+  .task-eyebrow { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: #6ee7c7; margin-bottom: 10px; }
+  header h1 { font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-bottom: 10px; }
+  header p { color: #93c5fd; font-size: 0.95rem; max-width: 700px; margin-bottom: 18px; }
+  .header-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge { font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; background: rgba(255,255,255,0.08); }
+  .badge.green { border-color: #6ee7c7; color: #6ee7c7; }
+  .badge.lead  { border-color: #93c5fd; color: #93c5fd; background: rgba(147,197,253,0.1); }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 48px 40px; }
+
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px; margin-bottom: 24px; }
+  .section h2 { font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .section h2::before { content: ''; display: inline-block; width: 3px; height: 18px; background: var(--accent); border-radius: 2px; }
+  .section h2.blue::before { background: var(--accent2); }
+  .section h2.orange::before { background: var(--warn); }
+  .section h2.red::before { background: var(--danger); }
+  .section h2.purple::before { background: #7c3aed; }
+  .section p { font-size: 0.9rem; color: var(--text3); line-height: 1.7; margin-top: 8px; }
+  .section h3 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
+
+  .code-wrap { background: var(--code-bg); border-radius: 8px; overflow: hidden; margin: 14px 0; }
+  .code-header { background: #0f172a; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .code-lang { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; }
+  .code-title { font-size: 0.78rem; color: #94a3b8; }
+  pre { padding: 16px; overflow-x: auto; color: var(--code-text); line-height: 1.7; font-family: 'Courier New', monospace; font-size: 0.82rem; }
+  .c-green { color: #4ade80; } .c-blue { color: #93c5fd; } .c-gray { color: #64748b; }
+  .c-yellow { color: #fde68a; } .c-orange { color: #fdba74; } .c-red { color: #fca5a5; }
+
+  .finding { border-left: 3px solid var(--accent); background: #f0fdf4; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .finding.warn { border-color: var(--warn); background: #fffbeb; }
+  .finding.bad  { border-color: var(--danger); background: #fef2f2; }
+  .finding.info { border-color: var(--accent2); background: #eff6ff; }
+  .finding.purple { border-color: #7c3aed; background: #f5f3ff; }
+  .finding h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+  .finding p  { font-size: 0.85rem; color: #444; margin: 0; line-height: 1.6; }
+
+  /* Pipeline steps */
+  .pipeline { display: flex; flex-direction: column; gap: 0; margin: 16px 0; }
+  .pipeline-step { display: flex; gap: 16px; align-items: flex-start; }
+  .pipeline-line { display: flex; flex-direction: column; align-items: center; }
+  .pipeline-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: white; flex-shrink: 0; }
+  .pipeline-connector { width: 2px; background: var(--border); flex: 1; min-height: 20px; margin: 2px 0; }
+  .pipeline-content { padding-bottom: 20px; flex: 1; }
+  .pipeline-content h4 { font-size: 0.92rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .pipeline-content p { font-size: 0.85rem; color: var(--text3); margin: 0; line-height: 1.6; }
+  .pipeline-content .tag { display: inline-block; font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; margin-top: 6px; font-weight: 600; }
+
+  /* Metric cards */
+  .metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; }
+  .metric-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
+  .metric-box .val { font-size: 1.6rem; font-weight: 800; font-family: 'Courier New', monospace; margin-bottom: 4px; }
+  .metric-box .lbl { font-size: 0.75rem; color: var(--text2); line-height: 1.4; }
+
+  /* Alert pipeline */
+  .alert-flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 14px 0; padding: 16px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); }
+  .af-step { background: white; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 0.82rem; font-weight: 600; color: var(--text); }
+  .af-arrow { color: var(--text2); font-size: 1rem; }
+
+  /* Image placeholder */
+  .img-block { margin: 20px 0; }
+  .img-block img { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; }
+  .img-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: var(--surface2); border: 2px dashed var(--border); border-radius: 8px; padding: 28px; text-align: center; }
+  .img-placeholder .img-icon { font-size: 1.8rem; }
+  .img-placeholder .img-name { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--accent2); font-weight: 700; }
+  .img-placeholder .img-desc { font-size: 0.78rem; color: var(--text2); }
+  .img-caption { font-size: 0.78rem; color: var(--text2); text-align: center; margin-top: 8px; font-style: italic; }
+  .img-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 14px 0; }
+  .data-table th { background: #1a3a5c; color: white; padding: 9px 14px; text-align: left; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .data-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--text3); }
+  .data-table tr:hover td { background: var(--surface2); }
+  .data-table td b { color: var(--text); }
+  .good { color: var(--accent) !important; font-weight: 700; }
+
+  .bottom-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+  .nav-btn { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 0.88rem; padding: 10px 20px; border-radius: 8px; font-weight: 600; transition: all 0.15s; }
+  .nav-btn.prev { color: var(--text2); border: 1px solid var(--border); background: var(--surface); }
+  .nav-btn.prev:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn.next { color: white; background: #1a3a5c; border: 1px solid #1a3a5c; }
+  .nav-btn.next:hover { background: var(--accent); border-color: var(--accent); }
+
+  footer { background: #1a3a5c; border-top: 3px solid var(--accent); padding: 24px 40px; text-align: center; font-size: 0.82rem; color: #93c5fd; }
+  footer a { color: #6ee7c7; text-decoration: none; }
+
+  @media (max-width: 768px) {
+    header, footer { padding: 0 20px; }
+    .container { padding: 24px 20px; }
+    header h1 { font-size: 1.6rem; }
+    .img-grid { grid-template-columns: 1fr; }
+    .alert-flow { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="breadcrumb"><a href="index.html">← EdgeGuard Docs</a> / Task 6</div>
+    <div class="task-eyebrow">Task 6 · AI Inference</div>
+    <h1>Object Detection & AI Inference</h1>
+    <p>Real-time face coverage detection using YOLOv8n on the Hailo AI HAT+ NPU — from dataset collection through model training, format conversion, and live inference at 20 FPS.</p>
+    <div class="header-meta">
+      <span class="badge lead">👤 Lead: Nauman Iftikhar</span>
+      <span class="badge green">✓ Complete</span>
+      <span class="badge">YOLOv8n · Hailo AI HAT+ · ZMQ · Roboflow</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Overview -->
+  <div class="section">
+    <h2>Overview</h2>
+    <p>
+      The goal of Task 6 is to run real-time AI object detection on the cluster. 
+      EdgeGuard detects <b>face coverage</b> as a threat indicator — a person with 
+      a covered face (mask, hood, scarf covering features) triggers a suspicious alert, 
+      while a visible face is classified as safe. This is a binary classification per 
+      detected person in the camera frame.
+    </p>
+    <p>
+      The system consists of a <b>Raspberry Pi 4</b> with an AI Camera Module capturing 
+      video, streaming it via ZMQ to the <b>Raspberry Pi 5</b> which runs inference on 
+      the <b>Hailo AI HAT+</b> neural processing unit. Inference results feed into the 
+      alert pipeline — suspicious detections are saved with a snapshot, stored in 
+      PostgreSQL, and pushed to Telegram.
+    </p>
+  </div>
+
+  <!-- Hardware -->
+  <div class="section">
+    <h2 class="blue">Hardware</h2>
+
+    <h3>Hailo AI HAT+ (on Pi 5)</h3>
+    <p>
+      The Hailo AI HAT+ is an M.2 AI accelerator that sits on top of the Raspberry Pi 5. 
+      It contains the <b>Hailo-8L NPU</b> (Neural Processing Unit) with 13 TOPS 
+      (Tera Operations Per Second) of AI compute — dedicated hardware designed specifically 
+      for running neural networks efficiently.
+    </p>
+    <p>
+      The key advantage over running on the Pi 5 CPU: the NPU handles matrix multiplications 
+      (the core operation in neural networks) in dedicated silicon at orders of magnitude 
+      higher speed and lower power than a general-purpose CPU core.
+    </p>
+
+    <div class="metrics-row">
+      <div class="metric-box">
+        <div class="val" style="color:var(--accent)">13 TOPS</div>
+        <div class="lbl">Hailo-8L NPU compute</div>
+      </div>
+      <div class="metric-box">
+        <div class="val" style="color:var(--accent2)">14–17ms</div>
+        <div class="lbl">Inference per frame on Hailo</div>
+      </div>
+      <div class="metric-box">
+        <div class="val" style="color:var(--warn)">2–3 min</div>
+        <div class="lbl">Same inference on Pi 5 CPU</div>
+      </div>
+      <div class="metric-box">
+        <div class="val" style="color:var(--accent)">~8000×</div>
+        <div class="lbl">Speedup: NPU vs CPU</div>
+      </div>
+    </div>
+
+    <h3>Raspberry Pi AI Camera (on Pi 4)</h3>
+    <p>
+      The Raspberry Pi AI Camera Module contains the <b>IMX500 sensor</b> — a Sony imaging 
+      sensor with an onboard ISP. The Pi 4 captures 1080p video from this camera and 
+      streams frames to Pi 5 for inference. The camera runs on a dedicated Pi 4 
+      (sensor-node, 10.10.10.40) to keep camera capture isolated from inference workload.
+    </p>
+
+    <div class="finding info">
+      <h4>ℹ️ Why a dedicated Pi 4 for the camera?</h4>
+      <p>Running both camera capture and AI inference on the same Pi 5 caused frame drops 
+      due to CPU contention. Separating them — Pi 4 captures, Pi 5 infers — gave clean 
+      20 FPS at 1080p with no dropped frames.</p>
+    </div>
+  </div>
+
+  <!-- Dataset & Training -->
+  <div class="section">
+    <h2>Dataset & Model Training</h2>
+
+    <h3>Dataset</h3>
+    <p>
+      We used <b>Roboflow Universe</b> as the primary data source — a public repository 
+      of annotated computer vision datasets. We found existing datasets for face mask 
+      detection and combined them with custom raw images captured by our own camera setup.
+    </p>
+    <p>
+      All data was processed and augmented inside Roboflow's online platform before export:
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">text</span><span class="code-title">Dataset augmentation applied in Roboflow</span></div>
+      <pre>Classes:       face_visible, face_covered
+Augmentations: Horizontal flip
+               Rotation (±15°)
+               Brightness variation (±25%)
+               Blur (up to 1.5px)
+               Mosaic augmentation
+Split:         Train 80% / Validation 15% / Test 5%</pre>
+    </div>
+
+    <h3>Training — YOLOv8n</h3>
+    <p>
+      We chose <b>YOLOv8n</b> (nano variant) from Ultralytics. The "n" (nano) variant 
+      was specifically chosen because it is the smallest and fastest YOLOv8 model — 
+      optimized for edge devices with limited compute. It trades some accuracy for 
+      significantly lower inference time, which is the right tradeoff for real-time 
+      surveillance at 20 FPS.
+    </p>
+    <p>
+      Training was done in <b>Google Colab</b> using the free GPU tier (T4 GPU). 
+      Output: a <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">best.pt</code> PyTorch weights file.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><span class="code-title">Training command (Google Colab)</span></div>
+      <pre><span class="c-blue">from</span> ultralytics <span class="c-blue">import</span> YOLO
+
+model = YOLO(<span class="c-green">'yolov8n.pt'</span>)  <span class="c-gray"># start from pretrained nano weights</span>
+
+model.train(
+    data=<span class="c-green">'dataset.yaml'</span>,     <span class="c-gray"># Roboflow exported dataset config</span>
+    epochs=<span class="c-orange">100</span>,
+    imgsz=<span class="c-orange">640</span>,
+    batch=<span class="c-orange">16</span>,
+    device=<span class="c-green">'cuda'</span>            <span class="c-gray"># Colab T4 GPU</span>
+)
+<span class="c-gray"># Output: runs/detect/train/weights/best.pt</span></pre>
+    </div>
+  </div>
+
+  <!-- Model Evaluation -->
+  <div class="section">
+    <h2 class="purple">Model Evaluation</h2>
+    <p>
+      After training, we evaluated the model on the held-out test set to measure 
+      how well it detects face coverage. The key metrics for object detection are:
+    </p>
+
+    <h3>Training Configuration</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">text</span><span class="code-title">Training run summary</span></div>
+      <pre>Hardware:    Google Colab — Tesla T4 GPU (14.9GB VRAM)
+Framework:   Ultralytics YOLOv8 8.4.63 · PyTorch 2.11 · CUDA 12.8
+Model:       YOLOv8n (nano) — 73 layers · 3,006,038 parameters · 8.1 GFLOPs
+Epochs:      20
+Image size:  640×640
+Batch size:  16
+Dataset:     326 validation images · 1,018 instances
+Classes:     face_covered · non_covered_face
+Training time: 0.300 hours (~18 minutes) on T4
+Output:      best.pt — 6.2MB</pre>
+    </div>
+
+    <h3>Evaluation Results — best.pt (Final Model)</h3>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead>
+          <tr><th>Metric</th><th>What it measures</th><th>All classes</th><th>face_covered</th><th>non_covered_face</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>mAP@0.5</b></td>
+            <td>Mean Average Precision at IoU=0.5. Primary benchmark for object detection — measures how well the model finds AND localizes objects. 1.0 = perfect.</td>
+            <td class="good">0.951 (95.1%)</td>
+            <td class="good">0.962</td>
+            <td class="good">0.939</td>
+          </tr>
+          <tr>
+            <td><b>mAP@0.5:0.95</b></td>
+            <td>Stricter version — averages mAP across IoU thresholds from 0.5 to 0.95. Penalizes imprecise bounding boxes. Industry standard for COCO benchmark.</td>
+            <td class="good">0.674 (67.4%)</td>
+            <td class="good">0.670</td>
+            <td class="good">0.677</td>
+          </tr>
+          <tr>
+            <td><b>Precision</b></td>
+            <td>Of all detections the model made, how many were correct? High precision = few false alarms. A person incorrectly flagged as suspicious when they are not.</td>
+            <td class="good">0.906 (90.6%)</td>
+            <td>0.890</td>
+            <td class="good">0.921</td>
+          </tr>
+          <tr>
+            <td><b>Recall</b></td>
+            <td>Of all actual face-covered people in the frame, how many did the model find? High recall = few missed detections. A suspicious person who is not caught.</td>
+            <td class="good">0.857 (85.7%)</td>
+            <td class="good">0.911</td>
+            <td>0.803</td>
+          </tr>
+          <tr>
+            <td><b>Confidence threshold</b></td>
+            <td>Minimum score to trigger alert. Below this = detection ignored. We chose 0.5 to balance false alarms vs missed detections.</td>
+            <td colspan="3"><b>0.5 (50%)</b> — tuned based on validation results</td>
+          </tr>
+          <tr>
+            <td><b>Inference speed (T4 GPU)</b></td>
+            <td>Speed during training validation on Colab T4 GPU. Reference only — not the deployment target.</td>
+            <td colspan="3">Preprocess: 0.3ms · Inference: 3.0ms · Postprocess: 3.6ms = <b>~7ms/frame</b></td>
+          </tr>
+          <tr>
+            <td><b>Inference speed (Hailo NPU)</b></td>
+            <td>Actual deployment speed on the Hailo AI HAT+ NPU on Pi 5. This is the production performance figure.</td>
+            <td colspan="3" class="good"><b>14–17ms/frame → 20 FPS @ 1080p</b></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Training Progress — How the Model Improved</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">text</span><span class="code-title">mAP@0.5 progression across 20 epochs</span></div>
+      <pre>Epoch  1:  mAP50=0.789  mAP50-95=0.460  ← starting point
+Epoch  5:  mAP50=0.890  mAP50-95=0.587  ← rapid improvement
+Epoch 10:  mAP50=0.923  mAP50-95=0.628  ← strong performance
+Epoch 15:  mAP50=0.937  mAP50-95=0.653  ← approaching plateau
+Epoch 20:  mAP50=0.951  mAP50-95=0.673  ← final model (best.pt)
+
+All losses decreasing consistently:
+  box_loss:  1.499 → 1.007  ← localization improving
+  cls_loss:  2.107 → 0.543  ← classification improving
+  dfl_loss:  1.172 → 0.971  ← distribution focal loss improving</pre>
+    </div>
+
+    <div class="finding">
+      <h4>✅ Strong model — 95.1% mAP@0.5</h4>
+      <p>A mAP@0.5 of 0.951 is excellent for a 2-class detection task. The model is 
+      particularly strong at detecting <b>face_covered</b> (mAP=0.962, recall=0.911) — 
+      the critical class for our surveillance use case. Missing a covered face is more 
+      costly than a false alarm, and the high recall on this class means very few 
+      suspicious events go undetected.</p>
+    </div>
+
+    <div class="finding info">
+      <h4>🔍 Why mAP@0.5:0.95 is lower than mAP@0.5</h4>
+      <p>mAP@0.5 requires bounding boxes to overlap with the ground truth by at least 50%. 
+      mAP@0.5:0.95 averages across thresholds from 50% to 95% overlap — it penalizes 
+      imprecise bounding box locations. Our 0.674 score reflects that while the model 
+      correctly identifies and classifies people, bounding box precision varies. 
+      For a surveillance alert system, exact bounding box location matters less than 
+      correct classification — so 0.951 mAP@0.5 is the more relevant metric here.</p>
+    </div>
+
+    <div class="finding info">
+      <h4>ℹ️ Why mAP matters</h4>
+      <p>mAP (Mean Average Precision) is the standard evaluation metric for object detection models 
+      used in academic papers and industry benchmarks. It combines both precision and recall into 
+      a single number — a model that is precise but misses many detections, or finds many objects 
+      but with wrong bounding boxes, will both score poorly on mAP. 
+      A value of 1.0 is perfect; typical real-world models score 0.5–0.8.</p>
+    </div>
+
+    <div class="img-grid">
+      <div class="img-block">
+        <img src="BoxPR_curve.png" alt="Precision-Recall Curve"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="img-placeholder">
+          <span class="img-icon">📈</span>
+          <span class="img-name">BoxPR_curve.png</span>
+          <span class="img-desc">Precision-Recall curve per class at different confidence thresholds</span>
+        </div>
+        <div class="img-caption">Figure 1 — PR curve showing precision vs recall tradeoff for face_covered and non_covered_face at varying confidence thresholds.</div>
+      </div>
+      <div class="img-block">
+        <img src="confusion_matrix_normalized.png" alt="Confusion Matrix"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="img-placeholder">
+          <span class="img-icon">🔢</span>
+          <span class="img-name">confusion_matrix_normalized.png</span>
+          <span class="img-desc">Normalized confusion matrix — % correct vs misclassified per class</span>
+        </div>
+        <div class="img-caption">Figure 2 — Normalized confusion matrix showing classification accuracy per class. Diagonal = correct predictions.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conversion Challenge -->
+  <div class="section">
+    <h2 class="red">The Conversion Challenge: PT → HEF</h2>
+    <p>
+      This was the most technically challenging part of Task 6. The Hailo AI HAT+ 
+      does not run standard PyTorch or ONNX models — it requires its own proprietary 
+      <b>.HEF</b> (Hailo Executable Format) file. Converting from PyTorch to HEF 
+      is a multi-step process that requires significant GPU compute.
+    </p>
+
+    <h3>Why Not Use RPK?</h3>
+    <p>
+      The Raspberry Pi AI Camera comes with <b>RPK</b> (Raspberry Pi Kit) — a simpler 
+      way to deploy models. However RPK only works with the IMX500 sensor's onboard 
+      processing, not with the Hailo AI HAT+. Since we specifically wanted to use 
+      the Hailo AI HAT+ for its superior compute (13 TOPS vs IMX500's limited onboard 
+      processing), we had to go through the full HEF conversion pipeline.
+    </p>
+
+    <h3>The Conversion Pipeline</h3>
+    <div class="pipeline">
+      <div class="pipeline-step">
+        <div class="pipeline-line">
+          <div class="pipeline-dot" style="background:#7c3aed">1</div>
+          <div class="pipeline-connector"></div>
+        </div>
+        <div class="pipeline-content">
+          <h4>PyTorch (.pt) → ONNX (.onnx)</h4>
+          <p>Export from Ultralytics YOLOv8 to ONNX (Open Neural Network Exchange) — 
+          a framework-agnostic format. This step runs on any machine with Python and PyTorch.</p>
+          <span class="tag" style="background:#f5f3ff;color:#7c3aed">Runs on: any machine</span>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-line">
+          <div class="pipeline-dot" style="background:#dc2626">2</div>
+          <div class="pipeline-connector"></div>
+        </div>
+        <div class="pipeline-content">
+          <h4>ONNX (.onnx) → HAR (.har)</h4>
+          <p>Hailo's Model Zoo parser converts ONNX to HAR (Hailo Archive). 
+          This step uses Hailo's <b>Dataflow Compiler</b> to optimize the model 
+          for Hailo hardware. Requires the Hailo SDK and a GPU for quantization calibration.</p>
+          <span class="tag" style="background:#fef2f2;color:#dc2626">Requires: GPU + Hailo SDK</span>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-line">
+          <div class="pipeline-dot" style="background:#d97706">3</div>
+          <div class="pipeline-connector"></div>
+        </div>
+        <div class="pipeline-content">
+          <h4>HAR (.har) → HEF (.hef)</h4>
+          <p>Compile the HAR into HEF — the final binary that runs directly on the 
+          Hailo-8L NPU hardware. This is the most compute-intensive step — 
+          the compiler performs hardware-specific optimization and quantization.</p>
+          <span class="tag" style="background:#fffbeb;color:#d97706">Requires: GPU + Hailo Compiler</span>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-line">
+          <div class="pipeline-dot" style="background:#0d9e75">4</div>
+        </div>
+        <div class="pipeline-content">
+          <h4>Deploy HEF on Pi 5 + Hailo AI HAT+</h4>
+          <p>Copy the .hef file to Pi 5. The HailoRT runtime loads and runs it on 
+          the Hailo AI HAT+ at inference time. No GPU needed for inference.</p>
+          <span class="tag" style="background:#f0fdf4;color:#0d9e75">Runs on: Hailo AI HAT+</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>The GPU Problem — and How We Solved It</h3>
+    <p>
+      Steps 2 and 3 require a powerful GPU to run the Hailo Dataflow Compiler. 
+      None of the team members had access to a local GPU machine, and the Pi 5 
+      itself cannot run the compiler. This blocked deployment.
+    </p>
+
+    <div class="finding bad">
+      <h4>❌ Problem: No local GPU available</h4>
+      <p>The Hailo Dataflow Compiler requires CUDA-capable GPU hardware with significant VRAM. 
+      Google Colab (where we trained) does not provide a persistent environment — 
+      the session times out and the Hailo SDK installation is lost. 
+      The Pi 5 CPU cannot run the compiler in a reasonable time.</p>
+    </div>
+
+    <div class="finding">
+      <h4>✅ Solution: Massive Compute cloud GPU service</h4>
+      <p>We used <b>Massive Compute</b> — a cloud GPU rental service — to provision 
+      a GPU machine with sufficient VRAM and a persistent environment. 
+      We installed the Hailo SDK and Dataflow Compiler there, ran the full 
+      ONNX → HAR → HEF conversion pipeline, and downloaded the resulting .hef file. 
+      This took approximately 2–3 hours of GPU time.</p>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><span class="code-title">HEF conversion pipeline (ran on Massive Compute GPU)</span></div>
+      <pre><span class="c-gray"># Step 1: Export PyTorch to ONNX</span>
+python3 -c <span class="c-green">"
+from ultralytics import YOLO
+model = YOLO('best.pt')
+model.export(format='onnx', imgsz=640)
+"</span>
+
+<span class="c-gray"># Step 2: Parse ONNX to HAR using Hailo Model Zoo</span>
+hailomz parse --hw-arch hailo8l \
+    --ckpt best.onnx \
+    yolov8n
+
+<span class="c-gray"># Step 3: Optimize and compile HAR to HEF</span>
+hailomz optimize --hw-arch hailo8l \
+    --har yolov8n.har \
+    --calib-path calibration_images/
+
+hailomz compile --hw-arch hailo8l \
+    --har yolov8n_optimized.har
+
+<span class="c-gray"># Output: yolov8n.hef — deploy this to Pi 5</span></pre>
+    </div>
+  </div>
+
+  <!-- Video Streaming -->
+  <div class="section">
+    <h2 class="orange">Video Streaming — From Pi 4 to Pi 5</h2>
+
+    <h3>Problem with HTTP MJPEG</h3>
+    <p>
+      Our first approach was streaming via HTTP MJPEG — the Pi 4 serves camera frames 
+      as a continuous HTTP response. This worked but had a <b>2–4 second latency</b> 
+      due to HTTP connection overhead, buffering, and TCP retransmission. 
+      A 2–4 second delay between what the camera sees and what the AI processes 
+      makes real-time surveillance impossible.
+    </p>
+
+    <h3>Solution: ZMQ PubSub</h3>
+    <p>
+      We replaced HTTP MJPEG with <b>ZeroMQ (ZMQ) PubSub</b> — a high-performance 
+      asynchronous messaging library. The Pi 4 <em>publishes</em> compressed JPEG 
+      frames on a ZMQ socket. The Pi 5 <em>subscribes</em> and receives frames 
+      as fast as the network allows — with no HTTP overhead, no buffering, 
+      and no connection management. Latency dropped from 2–4 seconds to <b>~50ms</b>.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><span class="code-title">ZMQ streaming — simplified</span></div>
+      <pre><span class="c-gray"># Pi 4 — Publisher (det.py)</span>
+<span class="c-blue">import</span> zmq, cv2
+
+context = zmq.Context()
+socket = context.socket(zmq.PUB)
+socket.bind(<span class="c-green">"tcp://0.0.0.0:5555"</span>)
+
+<span class="c-blue">while</span> True:
+    ret, frame = camera.read()
+    _, buffer = cv2.imencode(<span class="c-green">'.jpg'</span>, frame, [cv2.IMWRITE_JPEG_QUALITY, <span class="c-orange">80</span>])
+    socket.send(buffer.tobytes())   <span class="c-gray"># fire and forget — no ACK needed</span>
+
+<span class="c-gray"># Pi 5 — Subscriber (inference service)</span>
+socket = context.socket(zmq.SUB)
+socket.connect(<span class="c-green">"tcp://10.10.10.40:5555"</span>)
+socket.setsockopt(zmq.SUBSCRIBE, <span class="c-green">b""</span>)
+
+<span class="c-blue">while</span> True:
+    frame_bytes = socket.recv()     <span class="c-gray"># ~50ms latency</span>
+    frame = cv2.imdecode(np.frombuffer(frame_bytes, np.uint8), cv2.IMREAD_COLOR)
+    <span class="c-gray"># → run Hailo inference on frame</span></pre>
+    </div>
+  </div>
+
+  <!-- Detection Logic -->
+  <div class="section">
+    <h2>Detection Logic & Alert Pipeline</h2>
+
+    <h3>What counts as suspicious?</h3>
+    <p>
+      The model outputs a bounding box and class label for each detected person in the frame. 
+      We defined two classes during training:
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0">
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;text-align:center">
+        <div style="font-size:1.5rem;margin-bottom:6px">✅</div>
+        <div style="font-weight:700;color:#0d9e75;margin-bottom:4px">face_visible</div>
+        <div style="font-size:0.82rem;color:var(--text3)">Full face visible — classified as SAFE. No alert generated.</div>
+      </div>
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;text-align:center">
+        <div style="font-size:1.5rem;margin-bottom:6px">⚠️</div>
+        <div style="font-weight:700;color:#dc2626;margin-bottom:4px">face_covered</div>
+        <div style="font-size:0.82rem;color:var(--text3)">Face partially or fully covered — classified as SUSPICIOUS. Alert triggered.</div>
+      </div>
+    </div>
+    <p>
+      A detection only triggers an alert if the model's <b>confidence score</b> is 
+      above 0.5 (50%). This threshold was chosen to balance false alarms (too low) 
+      against missed detections (too high).
+    </p>
+
+    <h3>Alert Pipeline</h3>
+    <div class="alert-flow">
+      <div class="af-step">🎥 Camera frame</div>
+      <div class="af-arrow">→</div>
+      <div class="af-step">🧠 Hailo inference</div>
+      <div class="af-arrow">→</div>
+      <div class="af-step">⚠️ face_covered detected</div>
+      <div class="af-arrow">→</div>
+      <div class="af-step">📸 Snapshot saved to MinIO</div>
+      <div class="af-arrow">→</div>
+      <div class="af-step">🗄️ Alert stored in PostgreSQL</div>
+      <div class="af-arrow">→</div>
+      <div class="af-step">📱 Telegram notification</div>
+      <div class="af-arrow">→</div>
+      <div class="af-step">🖥️ EdgeGuard dashboard</div>
+    </div>
+
+    <p>Each alert stored in PostgreSQL contains: event type, confidence score, timestamp, camera ID, and MinIO image URL. The EdgeGuard frontend displays all alerts with pagination and the snapshot image.</p>
+  </div>
+
+  <!-- Screenshots -->
+  <div class="section">
+    <h2>Screenshots</h2>
+    <div class="img-grid">
+      <div class="img-block">
+        <img src="detection_live.png" alt="Live Detection"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="img-placeholder">
+          <span class="img-icon">📷</span>
+          <span class="img-name">detection_live.png</span>
+          <span class="img-desc">Live camera feed with detection overlay and bounding boxes</span>
+        </div>
+        <div class="img-caption">Figure 1 — Live detection in EdgeGuard dashboard showing bounding boxes and confidence scores.</div>
+      </div>
+      <div class="img-block">
+        <img src="alert_history.png" alt="Alert History"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="img-placeholder">
+          <span class="img-icon">🔔</span>
+          <span class="img-name">alert_history.png</span>
+          <span class="img-desc">Alert history page showing suspicious event snapshots</span>
+        </div>
+        <div class="img-caption">Figure 2 — Alert history with MinIO snapshot images and confidence scores per alert.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Findings -->
+  <div class="section">
+    <h2>Key Findings</h2>
+    <div class="finding">
+      <h4>✅ ~8,000× speedup: Hailo NPU vs Pi 5 CPU</h4>
+      <p>CPU inference on Pi 5 ARM: 2–3 minutes per frame. Hailo AI HAT+ NPU: 14–17ms per frame. 
+      This makes the difference between a system that cannot do real-time video (CPU) 
+      and one that sustains 20 FPS at 1080p (NPU).</p>
+    </div>
+    <div class="finding warn">
+      <h4>⚠️ PT → HEF conversion requires external GPU</h4>
+      <p>The Hailo Dataflow Compiler cannot run on the Pi 5 CPU within a reasonable timeframe. 
+      We solved this by using Massive Compute cloud GPUs. This is an important real-world 
+      constraint: edge deployment does not mean edge development — model compilation 
+      still requires cloud resources.</p>
+    </div>
+    <div class="finding">
+      <h4>✅ ZMQ reduced streaming latency from 2–4s to ~50ms</h4>
+      <p>Replacing HTTP MJPEG with ZMQ PubSub was essential for real-time operation. 
+      The 50ms latency is imperceptible to the human eye and allows the AI system 
+      to react to events within the same video second they occur.</p>
+    </div>
+    <div class="finding info">
+      <h4>🔍 Why YOLOv8n and not a larger model?</h4>
+      <p>YOLOv8n (nano) is the smallest variant — optimized for edge devices. 
+      Larger models (YOLOv8s, m, l, x) would give better mAP but require more compute 
+      and memory, potentially exceeding what the Hailo-8L can run efficiently. 
+      For a binary classification task (face visible vs covered), the nano variant 
+      provides sufficient accuracy at the required frame rate.</p>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <a href="task5.html" class="nav-btn prev">← Task 5 — Monitoring</a>
+    <a href="task7.html" class="nav-btn next">Task 7 — Backend →</a>
+  </div>
+
+</div>
+
+<footer>
+  EdgeGuard SS2026 · Frankfurt University of Applied Sciences · Prof. Dr. Christian Baun ·
+  <a href="index.html">← Back to Docs</a> ·
+  <a href="https://github.com/nauman-iftikhar/Edgeguard">GitHub</a> ·
+  Presentation: July 16, 2026 · Room 1-234 · 14:15–17:15
+</footer>
+
+</body>
+</html>

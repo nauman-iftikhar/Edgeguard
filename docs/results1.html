@@ -1,0 +1,2277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Benchmark Results | EdgeGuard SS2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f7fa; color: #1a1a2e; }
+
+  header {
+    background: linear-gradient(135deg, #1a3a5c 0%, #0d2137 100%);
+    color: white; padding: 32px 40px;
+    border-bottom: 4px solid #1D9E75;
+  }
+  header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 6px; }
+  header p { color: #93c5fd; font-size: 1rem; }
+  header .meta { margin-top: 12px; display: flex; gap: 24px; flex-wrap: wrap; }
+  header .meta span { background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+  .section { background: white; border-radius: 12px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .section h2 { font-size: 1.3rem; color: #1a3a5c; margin-bottom: 6px; border-left: 4px solid #1D9E75; padding-left: 12px; }
+  .section p { color: #555; font-size: 0.95rem; line-height: 1.6; margin-top: 8px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab { padding: 8px 20px; border-radius: 6px; border: 2px solid #1a3a5c; background: white;
+         color: #1a3a5c; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; }
+  .tab.active { background: #1a3a5c; color: white; }
+  .tab:hover:not(.active) { background: #f0f4ff; }
+
+  .view-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .view-tab { padding: 6px 16px; border-radius: 6px; border: 2px solid #1D9E75; background: white;
+              color: #1D9E75; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; }
+  .view-tab.active { background: #1D9E75; color: white; }
+
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 768px) { .chart-grid { grid-template-columns: 1fr; } }
+
+  .chart-box { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+  .chart-box h3 { font-size: 0.95rem; color: #374151; margin-bottom: 12px; text-align: center; }
+  .chart-box canvas { max-height: 280px; }
+
+  .stats-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 12px; }
+  .stats-table th { background: #1a3a5c; color: white; padding: 10px 14px; text-align: left; }
+  .stats-table td { padding: 9px 14px; border-bottom: 1px solid #f0f0f0; }
+  .stats-table tr:hover td { background: #f5f7ff; }
+  .stats-table .plateau { background: #fff3cd !important; }
+  .stats-table .good { color: #1D9E75; font-weight: 600; }
+  .stats-table .warn { color: #d97706; font-weight: 600; }
+  .stats-table .bad { color: #dc2626; font-weight: 600; }
+
+  .finding-box { background: #f0fdf4; border-left: 4px solid #1D9E75; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .finding-box.warn { background: #fffbeb; border-color: #d97706; }
+  .finding-box.info { background: #eff6ff; border-color: #2563a8; }
+  .finding-box h4 { font-size: 0.95rem; margin-bottom: 6px; }
+  .finding-box p { font-size: 0.9rem; color: #444; }
+
+  .plateau-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .plateau-table th { background: #374151; color: white; padding: 10px 14px; }
+  .plateau-table td { padding: 9px 14px; border-bottom: 1px solid #e5e7eb; text-align: center; }
+  .plateau-table tr:hover td { background: #f9fafb; }
+
+  footer { text-align: center; padding: 24px; color: #666; font-size: 0.85rem; border-top: 1px solid #e5e7eb; margin-top: 24px; }
+  footer a { color: #1D9E75; text-decoration: none; }
+
+  .baun-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  @media (max-width: 700px) {
+    .baun-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-grid { grid-template-columns: 1fr !important; }
+    header h1 { font-size: 1.4rem; }
+    header .meta { gap: 8px; }
+    .tabs { gap: 4px; }
+    .tab { padding: 6px 12px; font-size: 0.82rem; }
+    .section { padding: 18px; }
+  }
+  @media (max-width: 480px) {
+    .baun-grid { grid-template-columns: 1fr; }
+    header { padding: 20px; }
+  }
+
+</style>
+<style>
+  /* ── Toggle styles ── */
+  .top-toggle {
+    display: flex; gap: 10px; padding: 20px 40px;
+    background: #fff; border-bottom: 1px solid #e5e7eb;
+    flex-wrap: wrap;
+  }
+  .top-btn {
+    padding: 10px 28px; font-size: 14px; font-weight: 700;
+    border-radius: 8px; cursor: pointer; transition: all 0.15s;
+    border: 2px solid #1a3a5c;
+    background: transparent; color: #1a3a5c;
+  }
+  .top-btn.active { background: #1a3a5c; color: white; }
+
+  .sub-toggle {
+    display: flex; gap: 8px; padding: 16px 40px 0;
+    flex-wrap: wrap;
+  }
+  .sub-btn {
+    padding: 8px 22px; font-size: 13px; font-weight: 700;
+    border-radius: 6px; cursor: pointer; transition: all 0.15s;
+    border: 2px solid #1D9E75;
+    background: transparent; color: #1D9E75;
+  }
+  .sub-btn.active { background: #1D9E75; color: white; }
+  .sub-btn.blue   { border-color: #2563a8; color: #2563a8; }
+  .sub-btn.blue.active { background: #2563a8; color: white; }
+  .sub-btn.purple { border-color: #7c3aed; color: #7c3aed; }
+  .sub-btn.purple.active { background: #7c3aed; color: white; }
+
+  .section-content { display: none; }
+  .section-content.active { display: block; }
+
+  .coming-soon {
+    text-align: center; padding: 80px 40px;
+    color: #999; font-size: 1.1rem;
+  }
+  .coming-soon span { font-size: 3rem; display: block; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Benchmark Results — EdgeGuard SS2026</h1>
+  <p>Parallel scaling across MPI-based (Tasks 2 & 3) and non-MPI (Task 4) approaches</p>
+  <div class="meta">
+    <span>🏫 Frankfurt University of Applied Sciences</span>
+    <span>📅 Cloud Computing SS2026</span>
+    <span>👨‍🏫 Prof. Dr. Christian Baun</span>
+    <span>🖥️ 8× Raspberry Pi 3B+ · 32 cores</span>
+  </div>
+</header>
+
+<!-- Top Toggle -->
+<div class="top-toggle">
+  <button class="top-btn active" onclick="showMPI()">MPI Based</button>
+  <button class="top-btn" onclick="showNonMPI()">Non-MPI</button>
+</div>
+
+<!-- MPI Sub Toggle -->
+<div class="sub-toggle" id="mpiSubToggle">
+  <button class="sub-btn active" onclick="showExample('mc')">Example 1 — Monte Carlo Pi</button>
+  <button class="sub-btn blue"   onclick="showExample('matrix')">Example 2 — Matrix Multiply</button>
+  <button class="sub-btn purple" onclick="showExample('hpl')">HPL Benchmark (GFLOPS)</button>
+</div>
+
+<div id="loadingMsg" style="display:none;text-align:center;padding:40px;font-size:1.1rem;color:#1D9E75;font-weight:bold">
+  ⏳ Loading benchmark data from CSV...
+</div>
+
+<!-- MPI Section -->
+<div id="mpiSection">
+
+  <!-- Monte Carlo Pi -->
+  <div id="mcSection" class="section-content active">
+    <div class="container">
+
+<!-- Overview -->
+<div class="section">
+  <h2>Experiment Overview</h2>
+  <p>We estimated π using the Monte Carlo method with MPI parallelization. Each rank independently generates random points and checks if they fall inside a unit circle. A single <code>MPI_Reduce</code> at the end combines results — making this an <strong>embarrassingly parallel</strong> workload with minimal communication overhead.</p>
+  <p style="margin-top:8px">We tested <strong>6 core counts</strong> (1, 2, 4, 8, 16, 32) across <strong>5 problem sizes</strong> (1M to 10B points), running each configuration 3–5 times on an idle cluster with active fan cooling. Pi5 was excluded from compute — all 32 cores are from 8× Pi3 nodes (4 cores each).</p>
+</div>
+
+<!-- Main Charts -->
+<div class="section">
+  <h2>Runtime & Speedup Charts</h2>
+  <p>Select problem size and view type. Charts replicate Prof. Baun's methodology from lecture slides.</p>
+
+  <div style="margin-top:16px">
+    <strong style="font-size:0.9rem;color:#555">PROBLEM SIZE:</strong>
+    <div class="tabs" id="sizeTabs" style="margin-top:8px">
+      <button class="tab" onclick="selectSize('0.1M',this)">0.1M</button>
+      <button class="tab active" onclick="selectSize('1M',this)">1M</button>
+      <button class="tab" onclick="selectSize('10M',this)">10M</button>
+      <button class="tab" onclick="selectSize('100M',this)">100M</button>
+      <button class="tab" onclick="selectSize('1B',this)">1B</button>
+      <button class="tab" onclick="selectSize('10B',this)">10B</button>
+    </div>
+    <strong style="font-size:0.9rem;color:#555">VIEW:</strong>
+    <div class="view-tabs" style="margin-top:8px">
+      <button class="view-tab active" onclick="selectView('runtime',this)">⏱ Runtime</button>
+      <button class="view-tab" onclick="selectView('speedup',this)">⚡ Speedup</button>
+      <button class="view-tab" onclick="selectView('both',this)">📊 Both</button>
+    </div>
+  </div>
+
+  <div id="chartsArea" style="margin-top:16px">
+    <div class="chart-grid">
+      <div class="chart-box" id="runtimeBox">
+        <h3 id="runtimeTitle">Runtime — 1M points (Mean of runs)</h3>
+        <canvas id="runtimeChart"></canvas>
+      </div>
+      <div class="chart-box" id="speedupBox">
+        <h3 id="speedupTitle">Speedup — 1M points</h3>
+        <canvas id="speedupChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Table -->
+  <div style="margin-top:20px;overflow-x:auto">
+    <table class="stats-table" id="statsTable">
+      <thead>
+        <tr>
+          <th>Cores</th>
+          <th>Mean Time (s)</th>
+          <th>Std Dev (s)</th>
+          <th>Speedup</th>
+          <th>Ideal</th>
+          <th>Efficiency</th>
+          <th>Runs</th>
+        </tr>
+      </thead>
+      <tbody id="statsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- All sizes overview -->
+<div class="section">
+  <h2>All Problem Sizes — Speedup Overview</h2>
+  <p>Speedup at each core count across all problem sizes. Shows how larger problems approach ideal scaling.</p>
+  <div class="chart-box" style="margin-top:16px">
+    <canvas id="overviewChart" style="max-height:350px"></canvas>
+  </div>
+</div>
+
+<!-- REPLACE the plateau section in the HTML with this -->
+
+<div class="section">
+  <h2>Finding the Parallelization Limit (Amdahl's Law in Practice)</h2>
+  <p>Prof. Baun's key challenge: <em>"Find the point where the program cannot be parallelized anymore."</em> We systematically investigated where our cluster hits this limit and what causes it. Single runs were used for preliminary investigation across problem sizes from 1B to 25B.</p>
+
+  <div class="finding-box warn" style="margin-top:16px">
+    <h4>⚠️ Parallelization Limit Found: 8 Cores (2 Nodes)</h4>
+    <p>At all problem sizes tested, <strong>8 cores is the effective parallelization limit</strong> on our cluster. Beyond 8 cores, crossing from 2 to 4 physical nodes introduces MPI communication overhead that exceeds the compute gain — exactly the serial fraction Amdahl's Law identifies. Adding more cores (16) provides no meaningful benefit, while 32 cores recovers by utilizing all 8 nodes symmetrically.</p>
+  </div>
+
+  <!-- Plateau data table -->
+  <div style="overflow-x:auto;margin-top:16px">
+    <table class="plateau-table">
+      <thead>
+        <tr>
+          <th>Problem Size</th>
+          <th>8 Cores (s)</th>
+          <th>16 Cores (s)</th>
+          <th>8→16 Improvement</th>
+          <th>32 Cores (s)</th>
+          <th>16→32 Improvement</th>
+          <th>Switch Topology</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1B</strong></td>
+          <td>25.46</td>
+          <td>25.37</td>
+          <td style="color:#dc2626;font-weight:600">0.4% ❌</td>
+          <td>12.57</td>
+          <td style="color:#1D9E75;font-weight:600">50.4% ✅</td>
+          <td>2 switches</td>
+        </tr>
+        <tr>
+          <td><strong>5B</strong></td>
+          <td>126.42</td>
+          <td>124.98</td>
+          <td style="color:#dc2626;font-weight:600">1.1% ❌</td>
+          <td>62.31</td>
+          <td style="color:#1D9E75;font-weight:600">50.1% ✅</td>
+          <td>2 switches</td>
+        </tr>
+        <tr>
+          <td><strong>7.5B</strong></td>
+          <td>189.87</td>
+          <td>186.95</td>
+          <td style="color:#dc2626;font-weight:600">1.5% ❌</td>
+          <td>93.74</td>
+          <td style="color:#1D9E75;font-weight:600">49.8% ✅</td>
+          <td>2 switches</td>
+        </tr>
+        <tr>
+          <td><strong>10B</strong></td>
+          <td>252.96</td>
+          <td>250.17</td>
+          <td style="color:#dc2626;font-weight:600">1.1% ❌</td>
+          <td>125.02</td>
+          <td style="color:#1D9E75;font-weight:600">50.0% ✅</td>
+          <td>2 switches</td>
+        </tr>
+        <tr style="background:#fffbeb">
+          <td><strong>10B</strong> <span style="font-size:0.8rem;color:#666">(after switch rearrangement)</span></td>
+          <td>256.23</td>
+          <td>249.34</td>
+          <td style="color:#d97706;font-weight:600">2.7% ⬆️</td>
+          <td>124.18</td>
+          <td style="color:#1D9E75;font-weight:600">50.2% ✅</td>
+          <td>1+1 switches</td>
+        </tr>
+        <tr>
+          <td><strong>25B</strong></td>
+          <td>640</td>
+          <td>624</td>
+          <td style="color:#dc2626;font-weight:600">2.5% ❌</td>
+          <td>311.4</td>
+          <td style="color:#1D9E75;font-weight:600">50.1% ✅</td>
+          <td>1+1 switches</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Trend chart -->
+  <div class="chart-box" style="margin-top:20px">
+    <h3>Does Problem Size Move the Parallelization Limit? (8→16 Core Improvement)</h3>
+    <canvas id="plateauTrendChart" style="max-height:220px"></canvas>
+  </div>
+
+  <!-- Switch topology investigation -->
+  <div style="margin-top:20px">
+    <h3 style="color:#1a3a5c;font-size:1rem;margin-bottom:12px">Switch Topology Investigation</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="finding-box warn">
+        <h4>Before — 2 Switch Setup</h4>
+        <p><strong>Switch 1:</strong> Pi5 + pi3-01 (2 devices)<br>
+        <strong>Switch 2:</strong> pi3-02 to pi3-08 (7 devices)<br>
+        <strong>Effect:</strong> ALL inter-Pi3 MPI communication crossed the inter-switch uplink</p>
+        <p style="margin-top:6px">Ping latency pi3-01→pi3-06: <strong>0.749ms</strong> (mdev: 0.205ms)</p>
+      </div>
+      <div class="finding-box">
+        <h4>After — Rearranged Setup</h4>
+        <p><strong>Switch 1:</strong> Pi5 + pi3-01 to pi3-06 (7 devices)<br>
+        <strong>Switch 2:</strong> pi3-07, pi3-08 (2 devices)<br>
+        <strong>Effect:</strong> Only 2 nodes cross the inter-switch boundary</p>
+        <p style="margin-top:6px">Ping latency pi3-01→pi3-06: <strong>0.433ms</strong> (mdev: 0.061ms) — <span style="color:#1D9E75">42% faster, 3.4× less jitter</span></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="finding-box info" style="margin-top:16px">
+    <h4>🔍 Answer to Prof. Baun's Question</h4>
+    <p><strong>Problem size effect:</strong> Increasing from 1B to 25B (25× larger) improved 8→16 core performance by only 0.4% → 2.5% — a marginal effect. To achieve clear 2× improvement at 16 cores, problem sizes of ~500B+ would theoretically be needed, which is impractical on this hardware.</p>
+    <p style="margin-top:6px"><strong>Switch topology effect:</strong> Rearranging switches improved latency by 42% and reduced jitter by 3.4×, with slight improvement in 8→16 performance (1.1% → 2.7% at 10B). However the plateau persisted.</p>
+    <p style="margin-top:6px"><strong>Final conclusion:</strong> The plateau is primarily a <strong>fundamental MPI communication topology effect</strong> when crossing from 2 to 4 physical nodes. A single switch connecting all 9 devices is the recommended next step to fully eliminate this bottleneck.</p>
+  </div>
+</div>
+
+<!-- Key Findings -->
+<div class="section">
+  <h2>Key Findings</h2>
+
+  <div class="finding-box">
+    <h4>1. Near-ideal scaling for 1→2→4→8 cores</h4>
+    <p>At 1B and 10B points, speedup tracks very closely to the ideal linear line: 2.00× at 2 cores, ~3.95× at 4 cores, ~7.87× at 8 cores. Parallel efficiency exceeds 98% up to 8 cores — the cluster hardware scales extremely well within node boundaries.</p>
+  </div>
+
+  <div class="finding-box warn">
+    <h4>2. Parallelization limit found at 8 cores (2 nodes)</h4>
+    <p>This directly answers Prof. Baun's challenge: <em>"Find the point where the program cannot be parallelized anymore."</em> On our cluster, the effective limit is <strong>8 cores</strong>. Beyond this, MPI communication overhead at the 2→4 node boundary exceeds the compute gain. This is Amdahl's Law made visible — the serial fraction is the inter-node MPI_Reduce communication.</p>
+  </div>
+
+  <div class="finding-box">
+    <h4>3. Problem size has marginal effect on the limit</h4>
+    <p>We tested problem sizes from 1B to 25B (25× increase) to see if larger problems move the parallelization limit. Improvement at 8→16 cores grew from 0.4% to only 2.5% — the limit remains at 8 cores regardless. This confirms the limit is structural (network topology) not computational.</p>
+  </div>
+
+  <div class="finding-box info">
+    <h4>4. Amdahl vs Gustafson — problem size is key</h4>
+    <p>At 1M points: speedup degrades rapidly beyond 4 cores (communication dominates — Amdahl's Law clearly visible). At 10B points: near-linear scaling to 8 cores, then the topology limit. This confirms Prof. Baun's lecture: <em>"A sufficiently large problem can be parallelized efficiently."</em></p>
+  </div>
+
+  <div class="finding-box">
+    <h4>5. Exceptional measurement consistency</h4>
+    <p>Coefficient of variation &lt; 0.5% for all 1B and 10B configurations across 3–5 runs. This demonstrates the cluster operates stably under controlled conditions — idle system, fan cooling, zombie process prevention. The consistency validates the results are real hardware behavior, not measurement noise.</p>
+  </div>
+</div>
+
+<!-- Methodology -->
+<div class="section">
+  <h2>Methodology</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px">
+    <div>
+      <h4 style="color:#1a3a5c;margin-bottom:8px">Cluster Configuration</h4>
+      <ul style="font-size:0.9rem;color:#555;line-height:1.8;padding-left:16px">
+        <li>8× Raspberry Pi 3B+ (32 cores total)</li>
+        <li>Pi5 excluded from compute (coordinator only)</li>
+        <li>k3s-agent stopped on all Pi3 nodes</li>
+        <li>Production services stopped on Pi5</li>
+        <li>Active fan cooling throughout</li>
+        <li>Temperature monitored (kept below 65°C)</li>
+      </ul>
+    </div>
+    <div>
+      <h4 style="color:#1a3a5c;margin-bottom:8px">Benchmark Parameters</h4>
+      <ul style="font-size:0.9rem;color:#555;line-height:1.8;padding-left:16px">
+        <li>Problem sizes: 1M, 10M, 100M, 1B, 10B points</li>
+        <li>Core counts: 1, 2, 4, 8, 16, 32</li>
+        <li>Runs per config: 3–5 (mean reported)</li>
+        <li>Cooldown: 15–30s between runs</li>
+        <li>Zombie process check before each run</li>
+        <li>Shared NFS binary, hostfile-based launch</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</div><!-- end container -->
+
+
+<!-- Baun-Style Summary Charts -->
+<div class="section">
+  <h2>Results Summary — Prof. Baun's Chart Format</h2>
+  <p>Runtime (top row) and Speedup (bottom row) for each problem size. Values shown on bars. Color: <span style="color:#16a34a;font-weight:600">green &gt;85% efficiency</span>, <span style="color:#ca8a04;font-weight:600">yellow 50–85%</span>, <span style="color:#dc2626;font-weight:600">red &lt;50% (parallelization limit)</span>.</p>
+
+  <!-- Runtime Row -->
+  <div style="margin-top:24px">
+    <div style="font-weight:700;color:#1a3a5c;font-size:1rem;border-left:4px solid #1D9E75;padding-left:10px;margin-bottom:16px">
+      Elapsed Real (Wall Clock) Time [s] — Mean of 3–5 Tests
+    </div>
+    <div class="baun-grid">
+      <div class="chart-box">
+        <h3>100,000 points</h3>
+        <canvas id="rt_01M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>1,000,000 points</h3>
+        <canvas id="rt_1M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>10,000,000 points</h3>
+        <canvas id="rt_10M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>100,000,000 points</h3>
+        <canvas id="rt_100M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>1,000,000,000 points</h3>
+        <canvas id="rt_1B" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>10,000,000,000 points</h3>
+        <canvas id="rt_10B" style="max-height:260px"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Speedup Row -->
+  <div style="margin-top:24px">
+    <div style="font-weight:700;color:#1a3a5c;font-size:1rem;border-left:4px solid #2563a8;padding-left:10px;margin-bottom:16px">
+      Speedup (relative to 1 core)
+    </div>
+    <div class="baun-grid">
+      <div class="chart-box">
+        <h3>0.1M points</h3>
+        <canvas id="sp_01M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>1M points</h3>
+        <canvas id="sp_1M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>10M points</h3>
+        <canvas id="sp_10M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>100M points</h3>
+        <canvas id="sp_100M" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>1B points</h3>
+        <canvas id="sp_1B" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>10B points</h3>
+        <canvas id="sp_10B" style="max-height:260px"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div id="baunLegend" style="display:flex;gap:24px;margin-top:16px;font-size:0.88rem;align-items:center;flex-wrap:wrap">
+    <span><span style="display:inline-block;width:16px;height:16px;background:#4ade80;border-radius:3px;margin-right:6px;vertical-align:middle"></span>Efficiency &gt;85% — Good scaling</span>
+    <span><span style="display:inline-block;width:16px;height:16px;background:#facc15;border-radius:3px;margin-right:6px;vertical-align:middle"></span>Efficiency 50–85% — Moderate</span>
+    <span><span style="display:inline-block;width:16px;height:16px;background:#f87171;border-radius:3px;margin-right:6px;vertical-align:middle"></span>Efficiency &lt;50% — Parallelization limit reached</span>
+  </div>
+</div>
+  </div>
+
+  <!-- Matrix Multiply -->
+  <div id="matrixSection" class="section-content">
+
+    <!-- Matrix Multiply HTML -->
+    <div class="container">
+
+    <div class="section">
+      <h2>Experiment Overview</h2>
+      <p>Dense matrix multiplication <strong>C = A × B</strong> using MPI. Each rank receives rows of A via
+      <code>MPI_Scatter</code> and a full copy of matrix B via <code>MPI_Bcast</code>. Results gathered with
+      <code>MPI_Gather</code>. Communication complexity is <strong>O(N²)</strong> — as N grows, the broadcast
+      of matrix B becomes larger, but O(N³) compute grows even faster, eventually allowing better scaling.</p>
+      <p style="margin-top:8px">Tested across 8 matrix sizes (N=1000 to N=4000) and 6 core counts (1–32), 3–5 runs each.
+      The investigation systematically found the memory limit and sweet spot.</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:16px">
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px;text-align:center">
+          <div style="font-size:1.4rem;margin-bottom:4px">❌</div>
+          <div style="font-weight:700;color:#dc2626">N=5000</div>
+          <div style="font-size:0.82rem;color:#666;margin-top:4px">Memory swap — 200MB per process × 4 = 800MB on Pi3. Hard limit confirmed.</div>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px;text-align:center">
+          <div style="font-size:1.4rem;margin-bottom:4px">📈</div>
+          <div style="font-weight:700;color:#2563a8">N=4000</div>
+          <div style="font-size:0.82rem;color:#666;margin-top:4px">Best scaling (6.60×) — MPI distributes memory across 8 nodes at 32 cores.</div>
+        </div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;text-align:center">
+          <div style="font-size:1.4rem;margin-bottom:4px">⭐</div>
+          <div style="font-weight:700;color:#1D9E75">N=3500</div>
+          <div style="font-size:0.82rem;color:#666;margin-top:4px">Sweet spot — best scaling, no memory pressure. 6.41× at 32 cores.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Runtime & Speedup Charts</h2>
+      <p>Select matrix size. Charts show runtime per core count and speedup vs ideal scaling.</p>
+
+      <div style="margin-top:16px">
+        <strong style="font-size:0.9rem;color:#555">MATRIX SIZE (N×N):</strong>
+        <div class="tabs" id="matrixNTabs" style="margin-top:8px">
+          <button class="tab" onclick="selectMatrixN('1000',this)">N=1000</button>
+          <button class="tab" onclick="selectMatrixN('1500',this)">N=1500</button>
+          <button class="tab" onclick="selectMatrixN('2000',this)">N=2000</button>
+          <button class="tab" onclick="selectMatrixN('3000',this)">N=3000</button>
+          <button class="tab" onclick="selectMatrixN('3250',this)">N=3250</button>
+          <button class="tab active" onclick="selectMatrixN('3500',this)">N=3500 ⭐</button>
+          <button class="tab" onclick="selectMatrixN('3750',this)">N=3750</button>
+          <button class="tab" onclick="selectMatrixN('4000',this)">N=4000 ⚠️</button>
+        </div>
+      </div>
+
+      <!-- Memory / info warning -->
+      <div id="matrixMemWarning" style="display:none;margin:12px 0;padding:12px 16px;border-radius:0 8px 8px 0;border-left:4px solid #d97706;background:#fffbeb;font-size:0.88rem;color:#444"></div>
+
+      <div class="chart-grid" style="margin-top:16px">
+        <div class="chart-box">
+          <h3 id="matrixRuntimeTitle">Runtime — N=3500 (Mean of runs)</h3>
+          <canvas id="matrixRuntimeChart" style="max-height:280px"></canvas>
+        </div>
+        <div class="chart-box" id="matrixSpeedupBox">
+          <h3>Speedup vs Ideal</h3>
+          <canvas id="matrixSpeedupChart" style="max-height:280px"></canvas>
+        </div>
+      </div>
+      <div id="matrixNoBaseline" style="display:none;padding:20px;text-align:center;background:#fef2f2;border-radius:8px;margin-top:12px;color:#dc2626;font-weight:700">
+        ❌ No 1-core baseline available for this N — speedup cannot be computed. Memory swap occurred at low core counts.
+      </div>
+
+      <!-- Stats table -->
+      <div style="margin-top:20px;overflow-x:auto">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>Cores</th><th>Mean Time (s)</th><th>Std Dev</th>
+              <th>Speedup</th><th>Ideal</th><th>Efficiency</th><th>Runs</th>
+            </tr>
+          </thead>
+          <tbody id="matrixStatsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Gustafson chart -->
+    <div class="section">
+      <h2>Gustafson's Law — 32-Core Speedup vs Problem Size N</h2>
+      <p>As N increases, O(N³) compute grows faster than O(N²) communication overhead — larger problems scale better.
+      The crossover point is around N=3250 where the parallelization limit shifts past 8 cores.
+      Green bar = sweet spot (N=3500).</p>
+      <div class="chart-box" style="margin-top:16px">
+        <canvas id="matrixGustafsonChart" style="max-height:260px"></canvas>
+      </div>
+    </div>
+
+    <!-- Key findings -->
+    <div class="section">
+      <h2>Key Findings</h2>
+
+      <div class="finding-box">
+        <h4>⭐ Sweet spot: N=3500, 6.44× at 32 cores — best time-to-result</h4>
+        <p>N=3500 completes in 68s at 32 cores with 6.44× speedup. While N=4000 achieves slightly
+        better scaling (6.60×), it takes 100s at 32 cores. N=3500 gives the best balance of
+        scaling efficiency and practical runtime. CV &lt;1% confirms stable measurements.</p>
+      </div>
+
+      <div class="finding-box">
+        <h4>✅ N=4000 scales better at 32 cores — MPI distributes memory pressure</h4>
+        <p>N=4000 achieves 6.60× at 32 cores (best of all tested sizes). At 32 cores across 8 nodes,
+        MPI_Scatter distributes rows of A across processes — each Pi3 handles less data.
+        Matrix B (128MB) is broadcast to all processes but distributed compute means each Pi3
+        only runs 4 processes simultaneously, keeping memory manageable.
+        At low core counts (1–4 cores on 1 node), all compute pressure falls on one Pi3 → slower scaling.</p>
+      </div>
+
+      <div class="finding-box warn">
+        <h4>⚠️ Gustafson's Law clearly visible — scaling improves with N</h4>
+        <p>32-core speedup grows consistently with N: 2.34× (N=1000) → 3.59× (N=1500) →
+        4.42× (N=2000) → 5.82× (N=3000) → 6.44× (N=3500) → 6.60× (N=4000).
+        As N grows, O(N³) compute dominates O(N²) communication — larger problems parallelize
+        more efficiently. This is Gustafson's Law: scale the problem with the cores.</p>
+      </div>
+
+      <div class="finding-box" style="background:#fef2f2;border-color:#dc2626">
+        <h4>❌ Memory limit at N=5000 — hard boundary confirmed</h4>
+        <p>N=5000 causes immediate memory swap on Pi3: each process holds full matrix B
+        (5000² × 8 = 200MB) × 4 processes per Pi3 = 800MB — exceeding Pi3's 1GB RAM.
+        N=4000 (128MB × 4 = 512MB) runs successfully. Maximum safe N on this cluster: <strong>4000</strong>.
+        N=5000 is the confirmed hard limit.</p>
+      </div>
+
+      <div class="finding-box info">
+        <h4>🔍 Parallelization limit shifts with N (Amdahl vs Gustafson)</h4>
+        <p>At N=1000: limit hits at 4 cores (efficiency collapses from 100% → 7.3% at 32 cores).
+        At N=3250: crossover point — limit shifts past 8 cores.
+        At N=4000: scaling continues improving to 32 cores.
+        This confirms: fixed small problem = Amdahl dominates. Scaled large problem = Gustafson applies.</p>
+      </div>
+    </div>
+
+    </div><!-- end container -->
+
+  </div>
+
+  <!-- HPL Benchmark -->
+  <div id="hplSection" class="section-content">
+    <div class="container">
+    <div class="section">
+      <h2>Experiment Overview</h2>
+      <p><strong>HPL (High Performance LINPACK)</strong> is the benchmark used to rank the <a href="https://top500.org" target="_blank" style="color:#1D9E75">TOP500 supercomputers</a> worldwide. It solves a dense linear system <strong>Ax = b</strong> using LU factorization with partial pivoting, measuring sustained GFLOPS. The result must be numerically correct — it cannot be faked.</p>
+      <p style="margin-top:8px"><strong>How it differs from Monte Carlo Pi:</strong> Monte Carlo has only <code>ONE MPI_Reduce</code> at the very end — communication is O(1), negligible. HPL requires a panel broadcast and pivot search across ALL nodes at <strong>every elimination step</strong> — communication is O(N²). This is why Monte Carlo <em>plateaus</em> at 8→16 cores while HPL <em>drops</em> at 4→8 cores. Same network boundary, amplified by a communication-heavy algorithm.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px">
+          <h4 style="color:#1D9E75;margin-bottom:8px">Monte Carlo Pi — O(1) communication</h4>
+          <ul style="font-size:0.88rem;color:#555;line-height:1.8;padding-left:16px">
+            <li>Each rank works completely independently</li>
+            <li>Single <code>MPI_Reduce</code> at the very end</li>
+            <li>Network barely involved during computation</li>
+            <li>Result: near-ideal scaling → <strong>plateau</strong> at 8→16 cores</li>
+          </ul>
+        </div>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px">
+          <h4 style="color:#dc2626;margin-bottom:8px">HPL — O(N²) communication</h4>
+          <ul style="font-size:0.88rem;color:#555;line-height:1.8;padding-left:16px">
+            <li>Panel factorization: global pivot search every step</li>
+            <li>Panel broadcast to ALL nodes before continuing</li>
+            <li>Network heavily involved at <em>every iteration</em></li>
+            <li>Result: GFLOPS <strong>drops</strong> 5.08→4.21 at 4→8 cores</li>
+          </ul>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+        <div>
+          <h4 style="color:#1a3a5c;margin-bottom:8px">Test Configuration</h4>
+          <ul style="font-size:0.88rem;color:#555;line-height:1.8;padding-left:16px">
+            <li>Tool: HPCC 1.5.0 (HPL component) via OpenMPI</li>
+            <li>Block size NB=128 (optimized for ARM Cortex-A53)</li>
+            <li>Pi3-only — Pi5 excluded (runs production stack)</li>
+            <li>Cooldown: 90s between tests · 3–5 runs per config</li>
+          </ul>
+        </div>
+        <div>
+          <h4 style="color:#1a3a5c;margin-bottom:8px">Problem Size N (scaled with cores)</h4>
+          <ul style="font-size:0.88rem;color:#555;line-height:1.8;padding-left:16px">
+            <li>1c: N=5000 · 2c: N=5500 · 4c: N=6000</li>
+            <li>8c: N=8000 · 16c: N=10000</li>
+            <li>24c: N=13000 · 32c: N=15000</li>
+            <li>N scales to give more compute per message (Gustafson)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="finding-box info" style="margin-top:16px">
+        <h4>🔍 Why N scales with core count?</h4>
+        <p>Each HPL process needs N²/P memory. More cores = more total RAM across nodes = larger N possible. Larger N means O(N³) compute grows faster than O(N²) communication — scaling improves at higher core counts. Same Gustafson principle as Matrix Multiply.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>GFLOPS Results — with Min/Max Error Bars</h2>
+      <p>Bar height = mean GFLOPS. Error bars show min/max across all runs. <span style="color:#1D9E75;font-weight:600">■ Green</span> = single-node, <span style="color:#dc2626;font-weight:600">■ Red</span> = 8-core dip, <span style="color:#2563a8;font-weight:600">■ Blue</span> = recovery.</p>
+      <div class="chart-grid" style="margin-top:16px">
+        <div class="chart-box">
+          <h3>GFLOPS vs Core Count (with error bars)</h3>
+          <canvas id="hplCandleChart" style="max-height:300px"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>GFLOPS per Core (parallel efficiency)</h3>
+          <canvas id="hplPerCoreChart" style="max-height:300px"></canvas>
+        </div>
+      </div>
+      <div style="margin-top:20px;overflow-x:auto">
+        <table class="stats-table">
+          <thead><tr><th>Cores</th><th>N</th><th>Mean GFLOPS</th><th>Std Dev</th><th>Min</th><th>Max</th><th>GFLOPS/Core</th><th>Runs</th></tr></thead>
+          <tbody id="hplStatsBody"></tbody>
+        </table>
+      </div>
+      <p style="font-size:0.82rem;color:#999;margin-top:8px">⚠️ Highlighted row (8 cores) = dip due to first inter-node network boundary.</p>
+    </div>
+
+    <div class="section">
+      <h2>The 8-Core Dip — Prof. Baun's Key Question Answered</h2>
+      <p>Prof. Baun's challenge: <em>"Find the point where the program cannot be parallelized anymore."</em> HPL shows something more revealing — it doesn't just plateau, it <strong>regresses</strong>.</p>
+      <div class="finding-box warn" style="margin-top:16px">
+        <h4>⚠️ GFLOPS drops 5.082 → 4.212 at 4→8 cores (first node boundary)</h4>
+        <p>At 4 cores (1 node): all MPI panel broadcasts stay within shared memory — zero latency. At 8 cores (2 nodes): every panel broadcast crosses the 100Mbit/s LAN switch. HPL performs N panel broadcasts per factorization — at N=8000 this is 8000 sync points crossing the network. Communication cost exceeds the compute benefit of 4 extra cores.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+        <div class="finding-box">
+          <h4>Monte Carlo comparison — same boundary, different impact</h4>
+          <p>Monte Carlo at 8→16 cores only <em>plateaued</em> (7.87×→7.99×) because it communicates once. HPL at 4→8 cores <em>regresses</em> because it communicates at every step. O(1) vs O(N²) communication makes all the difference.</p>
+        </div>
+        <div class="finding-box info">
+          <h4>Recovery at 16+ cores — Gustafson's Law</h4>
+          <p>At 16 cores, N increases to 10000 — O(N³) compute grows faster than O(N²) communication. GFLOPS recovers to 6.28 and continues to 11.56 at 32 cores.</p>
+        </div>
+      </div>
+      <div style="overflow-x:auto;margin-top:20px">
+        <table class="plateau-table">
+          <thead><tr><th>Boundary</th><th>Monte Carlo Pi</th><th>HPL</th><th>Why Different?</th></tr></thead>
+          <tbody>
+            <tr><td><strong>1→2 nodes (4→8 cores)</strong></td><td style="color:#1D9E75">7.23× speedup ✅</td><td style="color:#dc2626">5.08→4.21 GFLOPS ❌</td><td>HPL broadcasts panel every step; MC only at end</td></tr>
+            <tr><td><strong>2→4 nodes (8→16 cores)</strong></td><td style="color:#dc2626">Plateau 7.99× ⚠️</td><td style="color:#1D9E75">4.21→6.28 GFLOPS ✅</td><td>N grows to 10000 — more compute per message</td></tr>
+            <tr><td><strong>4→8 nodes (16→32 cores)</strong></td><td style="color:#1D9E75">16.22× at 10B ✅</td><td style="color:#1D9E75">6.28→11.56 GFLOPS ✅</td><td>Both benefit from scale — compute dominates</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Key Findings</h2>
+      <div class="finding-box">
+        <h4>✅ Peak: 11.56 GFLOPS at 32 cores — consistent improvement above 8 cores</h4>
+        <p>After the dip: 4.21 (8c) → 6.28 (16c) → 8.58 (24c) → 11.56 (32c). Scaling 16→32 cores achieves 1.84× improvement — strong for communication-heavy workload on 100Mbit/s LAN.</p>
+      </div>
+      <div class="finding-box warn">
+        <h4>⚠️ HPL efficiency: 25.8% of theoretical peak</h4>
+        <p>Theoretical peak for 32× ARM Cortex-A53 @ 1.4GHz ≈ 44.8 GFLOPS. Achieved: 11.56 GFLOPS = 25.8% efficiency. Typical for ARM SBC clusters — Pi3 uses software floating point pipeline without hardware FPU optimization. Prof. Baun's own published research on similar clusters reports comparable efficiency.</p>
+      </div>
+      <div class="finding-box" style="background:#fef2f2;border-color:#dc2626">
+        <h4>❌ 8-core dip is structural — confirmed across multiple runs</h4>
+        <p>Multiple measurements at 8 cores (4.117 and 4.307 GFLOPS) with 90s cooldown both show the same dip — confirming real hardware behavior, not measurement noise.</p>
+      </div>
+      <div class="finding-box info">
+        <h4>🔍 N=11000 crash at 16 cores — memory boundary found</h4>
+        <p>N=11000 at 16 cores crashed with out-of-memory on Pi3. Reducing to N=10000 succeeded. Each process holds N/P × N submatrix — at N=11000 with 4 processes per Pi3 this exceeds available RAM. Maximum safe N found empirically.</p>
+      </div>
+      <div class="finding-box">
+        <h4>📊 Pi3-02 power instability under sustained HPL load</h4>
+        <p>Pi3-02 spontaneously reboots at N≥8000 — confirmed power supply limitation. Mitigated by placing pi3-02 last in MPI node order so it only participates at 32 cores.</p>
+      </div>
+    </div>
+
+    </div><!-- end container -->
+  </div>
+
+</div>
+
+<!-- Non-MPI Section -->
+<div id="nonMpiSection" style="display:none">
+    <div class="container">
+
+    <div class="section">
+      <h2>Experiment Overview</h2>
+      <p>Prof. Baun's <strong>Task Distributor</strong> dispatches POV-Ray ray-tracing jobs across cluster nodes via SSH.
+      Unlike MPI which launches all processes simultaneously with <code>mpirun</code>, Task Distributor uses a
+      sequential for-loop to SSH into each worker — making coordination overhead a measurable serial fraction (Amdahl's Law directly visible).</p>
+      <p style="margin-top:8px">We tested <strong>4 resolutions</strong> (400×300 to 3200×2400) across <strong>4 node counts</strong> (1–8 nodes), 5 runs each.</p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px;text-align:center">
+          <div style="font-size:1.4rem;margin-bottom:4px">🔵</div>
+          <div style="font-weight:700;color:#2563a8;font-size:0.85rem">seq1 — SSH Dispatch</div>
+          <div style="font-size:0.8rem;color:#666;margin-top:4px">~0.003s always — negligible</div>
+        </div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;text-align:center">
+          <div style="font-size:1.4rem;margin-bottom:4px">🟢</div>
+          <div style="font-weight:700;color:#1D9E75;font-size:0.85rem">Parallel — POV-Ray Render</div>
+          <div style="font-size:0.8rem;color:#666;margin-top:4px">Reduces with more nodes ✅</div>
+        </div>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px;text-align:center">
+          <div style="font-size:1.4rem;margin-bottom:4px">🔴</div>
+          <div style="font-weight:700;color:#dc2626;font-size:0.85rem">seq2 — ImageMagick Stitch</div>
+          <div style="font-size:0.8rem;color:#666;margin-top:4px">Grows with more nodes ❌</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+        <div>
+          <h4 style="color:#1a3a5c;margin-bottom:8px">Cluster Configuration</h4>
+          <ul style="font-size:0.88rem;color:#555;line-height:1.8;padding-left:16px">
+            <li>Nodes: pi3-01 to pi3-08 (Pi3 only)</li>
+            <li>Pi5 as master — dispatches, does not render</li>
+            <li>NFS shared binary and scene file</li>
+            <li>5 runs per config · 30s cooldown</li>
+          </ul>
+        </div>
+        <div>
+          <h4 style="color:#1a3a5c;margin-bottom:8px">Benchmark Parameters</h4>
+          <ul style="font-size:0.88rem;color:#555;line-height:1.8;padding-left:16px">
+            <li>Scene: benchmark.pov (Prof. Baun's standard)</li>
+            <li>Split: equal horizontal row bands (height ÷ N)</li>
+            <li>Dispatch: sequential SSH calls</li>
+            <li>Stitch: ImageMagick convert -append</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Runtime, Speedup & Timing Breakdown</h2>
+      <p>Select resolution. <span style="color:#1D9E75;font-weight:600">Green &gt;85%</span>, <span style="color:#d97706;font-weight:600">Yellow 50–85%</span>, <span style="color:#dc2626;font-weight:600">Red &lt;50%</span> efficiency.</p>
+      <div style="margin-top:16px">
+        <strong style="font-size:0.9rem;color:#555">RESOLUTION:</strong>
+        <div class="tabs" id="tdResTabs" style="margin-top:8px">
+          <button class="tab" onclick="selectTDRes('400x300',this)">400×300</button>
+          <button class="tab" onclick="selectTDRes('800x600',this)">800×600</button>
+          <button class="tab" onclick="selectTDRes('1600x1200',this)">1600×1200</button>
+          <button class="tab active" onclick="selectTDRes('3200x2400',this)">3200×2400</button>
+        </div>
+      </div>
+      <p id="tdRuntimeTitle" style="font-size:0.85rem;color:#555;margin:12px 0 8px;font-weight:600">Runtime — 3200x2400 (Mean of 5 runs)</p>
+      <div class="chart-grid" style="margin-top:8px">
+        <div class="chart-box"><h3>Total Runtime per Node Count</h3><canvas id="tdRuntimeChart" style="max-height:280px"></canvas></div>
+        <div class="chart-box"><h3>Speedup vs Ideal</h3><canvas id="tdSpeedupChart" style="max-height:280px"></canvas></div>
+      </div>
+      <div class="chart-box" style="margin-top:20px">
+        <h3>Timing Breakdown — seq1 + Parallel + seq2 (Stacked)</h3>
+        <p style="font-size:0.82rem;color:#666;margin-bottom:12px">
+          <span style="color:#2563a8;font-weight:600">■ seq1</span> = SSH dispatch &nbsp;
+          <span style="color:#1D9E75;font-weight:600">■ Parallel</span> = POV-Ray rendering &nbsp;
+          <span style="color:#dc2626;font-weight:600">■ seq2</span> = ImageMagick composition
+        </p>
+        <canvas id="tdTimingChart" style="max-height:280px"></canvas>
+      </div>
+      <div style="margin-top:20px;overflow-x:auto">
+        <table class="stats-table">
+          <thead><tr><th>Nodes</th><th>Mean Total (s)</th><th>Std Dev</th><th>seq1 (s)</th><th>Parallel (s)</th><th>seq2 (s)</th><th>Speedup</th><th>Efficiency</th><th>Runs</th></tr></thead>
+          <tbody id="tdStatsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>All Resolutions — Speedup Overview</h2>
+      <p>Speedup at each node count across all resolutions. Larger images scale better. Even at 3200×2400, maximum speedup is only 1.78× at 8 nodes — far from ideal 8×.</p>
+      <div class="chart-box" style="margin-top:16px"><canvas id="tdOverviewChart" style="max-height:320px"></canvas></div>
+    </div>
+
+    <div class="section">
+      <h2>Amdahl's Law Analysis</h2>
+      <div style="overflow-x:auto;margin-top:16px">
+        <table class="plateau-table">
+          <thead><tr><th>Resolution</th><th>1 Node (s)</th><th>2 Nodes (s)</th><th>4 Nodes (s)</th><th>8 Nodes (s)</th><th>Best Speedup</th><th>seq2 @ 8 nodes</th></tr></thead>
+          <tbody>
+            <tr><td><strong>400×300</strong></td><td>3.222</td><td>3.285</td><td>4.095</td><td>4.139</td><td style="color:#dc2626;font-weight:600">0.78× ❌</td><td>0.084s</td></tr>
+            <tr><td><strong>800×600</strong></td><td>6.028</td><td>5.214</td><td>6.215</td><td>5.240</td><td style="color:#d97706;font-weight:600">1.16× ⚠️</td><td>0.181s</td></tr>
+            <tr><td><strong>1600×1200</strong></td><td>16.053</td><td>13.608</td><td>14.099</td><td>11.111</td><td style="color:#d97706;font-weight:600">1.44× ⚠️</td><td>0.642s</td></tr>
+            <tr><td><strong>3200×2400</strong></td><td>55.146</td><td>45.773</td><td>44.005</td><td>30.911</td><td style="color:#1D9E75;font-weight:600">1.78× ✅</td><td>2.398s</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="finding-box warn" style="margin-top:16px">
+        <h4>⚠️ Maximum Feasible Resolution: 3200×2400</h4>
+        <p>4800×3600 exceeded Pi3's /tmp partition limit during ImageMagick composition.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Key Findings</h2>
+      <div class="finding-box" style="background:#fef2f2;border-color:#dc2626">
+        <h4>❌ Small resolutions: more nodes = SLOWER (Amdahl's Law)</h4>
+        <p>At 400×300, SSH dispatch and ImageMagick overhead exceeds compute saved. Adding nodes actively hurts performance — the serial fraction is ~97%.</p>
+      </div>
+      <div class="finding-box warn">
+        <h4>⚠️ seq2 (ImageMagick) grows linearly with node count</h4>
+        <p>Composition time: 0.006s (1 node) → 2.398s (8 nodes) at 3200×2400. This growing serial phase limits maximum speedup regardless of resolution.</p>
+      </div>
+      <div class="finding-box">
+        <h4>✅ Larger resolutions scale better — Gustafson's Law</h4>
+        <p>Speedup improves from 0.78× (400×300) to 1.78× (3200×2400) — larger problems parallelize more efficiently as compute dominates overhead.</p>
+      </div>
+      <div class="finding-box info">
+        <h4>🔍 Node-based by design — Prof. Baun's own tool</h4>
+        <p>Task Distributor dispatches one POV-Ray process per node. The <code>-n</code> flag explicitly means "number of nodes". Published: SpringerPlus 2016 (DOI: 10.1186/s40064-016-2254-x).
+        <a href="https://github.com/christianbaun/task-distributor" target="_blank" style="color:#1D9E75">github.com/christianbaun/task-distributor</a></p>
+      </div>
+      <div class="finding-box">
+        <h4>📊 MPI vs Task Distributor — architecture matters</h4>
+        <p>Monte Carlo Pi: 7.87× at 8 cores (98.4% efficiency). Task Distributor: 1.78× at 8 nodes (22.3% efficiency). Same hardware, different communication pattern determines parallel efficiency.</p>
+      </div>
+    </div>
+
+    </div><!-- end container -->
+</div>
+
+<footer>
+  <p>EdgeGuard SS2026 · Frankfurt University of Applied Sciences ·
+  <a href="https://github.com/nauman-iftikhar/Edgeguard">GitHub</a> ·
+  <a href="https://nauman-iftikhar.github.io/Edgeguard">Documentation</a></p>
+</footer>
+
+<script>
+// ── Helpers ──────────────────────────────────────────────────
+function mean(arr) {
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+function stdDev(arr) {
+  if (arr.length < 2) return 0;
+  const m = mean(arr);
+  return Math.sqrt(arr.reduce((a, b) => a + (b - m) ** 2, 0) / (arr.length - 1));
+}
+
+// ── Globals ───────────────────────────────────────────────────
+let DATA = {};
+const CORES = [1,2,4,8,16,32];
+const SIZES_ORDER = ['0.1M','1M','10M','100M','1B','10B'];
+let SIZES = [];
+const COLORS = {
+  bar: 'rgba(29,158,117,0.8)',
+  barBorder: 'rgba(29,158,117,1)',
+  ideal: 'rgba(37,99,168,0.7)',
+  plateau: 'rgba(220,38,38,0.8)',
+};
+
+let currentSize = '1B';
+let currentView = 'both';
+let runtimeChart = null;
+let speedupChart = null;
+let overviewChart = null;
+
+// ── Load CSV ──────────────────────────────────────────────────
+async function loadCSV() {
+  const response = await fetch('monte_carlo_results_final.csv');
+  const text = await response.text();
+  const lines = text.trim().split('\n');
+
+  const raw = {};
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i].split(',');
+    if (vals.length < 4) continue;
+    const cores = vals[0].trim();
+    const size  = vals[1].trim();
+    const time  = parseFloat(vals[3].trim());
+    if (isNaN(time)) continue;
+    if (!raw[size]) raw[size] = {};
+    if (!raw[size][cores]) raw[size][cores] = [];
+    raw[size][cores].push(time);
+  }
+
+  DATA = {};
+  for (const size of SIZES_ORDER) {
+    if (!raw[size]) continue;
+    if (!raw[size]['1']) continue;
+    const baseline = mean(raw[size]['1']);
+    DATA[size] = {};
+    for (const cores of ['1','2','4','8','16','32']) {
+      if (!raw[size][cores]) continue;
+      const times = raw[size][cores];
+      const m = mean(times);
+      const s = stdDev(times);
+      const speedup = baseline / m;
+      DATA[size][cores] = {
+        mean: m,
+        std: s,
+        speedup: speedup,
+        ideal: parseInt(cores),
+        efficiency: (speedup / parseInt(cores)) * 100,
+        runs: times.length,
+        min: Math.min(...times),
+        max: Math.max(...times),
+      };
+    }
+  }
+
+  SIZES = SIZES_ORDER.filter(s => DATA[s]);
+}
+
+// ── Chart helpers ─────────────────────────────────────────────
+function getBarColors(size) {
+  return CORES.map(c => {
+    if (!DATA[size] || !DATA[size][String(c)]) return 'rgba(150,150,150,0.5)';
+    const d = DATA[size][String(c)];
+    if (d.efficiency > 85) return 'rgba(29,158,117,0.8)';
+    if (d.efficiency > 50) return 'rgba(234,179,8,0.8)';
+    return 'rgba(220,38,38,0.8)';
+  });
+}
+
+function updateCharts() {
+  if (!DATA[currentSize]) return;
+  const size = currentSize;
+  const d = DATA[size];
+  const means    = CORES.map(c => d[String(c)] ? d[String(c)].mean    : 0);
+  const speedups = CORES.map(c => d[String(c)] ? d[String(c)].speedup : 0);
+  const ideals   = CORES.map(c => c);
+  const barColors = getBarColors(size);
+
+  // Runtime Chart
+  if (runtimeChart) runtimeChart.destroy();
+  const rCtx = document.getElementById('runtimeChart').getContext('2d');
+  runtimeChart = new Chart(rCtx, {
+    type: 'bar',
+    data: {
+      labels: CORES.map(c => c + ' cores'),
+      datasets: [{
+        label: 'Mean Time (s)',
+        data: means,
+        backgroundColor: barColors,
+        borderColor: barColors.map(c => c.replace('0.8','1')),
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const cores = CORES[ctx.dataIndex];
+              const info = d[String(cores)];
+              if (!info) return '';
+              return ['Time: '+ctx.raw.toFixed(4)+'s', 'Speedup: '+info.speedup.toFixed(2)+'x', 'Efficiency: '+info.efficiency.toFixed(1)+'%'];
+            }
+          }
+        }
+      },
+      scales: {
+        y: { title: { display: true, text: 'Elapsed Time [s]' }, beginAtZero: true },
+        x: { title: { display: true, text: 'Number of Cores' } }
+      }
+    }
+  });
+
+  // Speedup Chart
+  if (speedupChart) speedupChart.destroy();
+  const sCtx = document.getElementById('speedupChart').getContext('2d');
+  speedupChart = new Chart(sCtx, {
+    type: 'bar',
+    data: {
+      labels: CORES.map(c => c + ' cores'),
+      datasets: [
+        {
+          label: 'Actual Speedup',
+          data: speedups,
+          backgroundColor: barColors,
+          borderColor: barColors.map(c => c.replace('0.8','1')),
+          borderWidth: 1,
+          order: 2
+        },
+        {
+          label: 'Ideal',
+          data: ideals,
+          type: 'line',
+          borderColor: 'rgba(37,99,168,0.7)',
+          borderDash: [5,5],
+          borderWidth: 2,
+          pointRadius: 3,
+          fill: false,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.datasetIndex === 1) return 'Ideal: '+ctx.raw+'x';
+              const cores = CORES[ctx.dataIndex];
+              const info = d[String(cores)];
+              if (!info) return '';
+              return ['Speedup: '+ctx.raw.toFixed(2)+'x', 'Ideal: '+cores+'x', 'Efficiency: '+info.efficiency.toFixed(1)+'%'];
+            }
+          }
+        }
+      },
+      scales: {
+        y: { title: { display: true, text: 'Speedup' }, beginAtZero: true },
+        x: { title: { display: true, text: 'Number of Cores' } }
+      }
+    }
+  });
+
+  document.getElementById('runtimeTitle').textContent = 'Runtime — '+size+' points (Mean of '+d['1'].runs+' runs)';
+  document.getElementById('speedupTitle').textContent = 'Speedup — '+size+' points vs Ideal';
+
+  updateTable(size);
+  updateVisibility();
+}
+
+function updateTable(size) {
+  const d = DATA[size];
+  if (!d) return;
+  const tbody = document.getElementById('statsBody');
+  tbody.innerHTML = '';
+  CORES.forEach(function(c) {
+    const info = d[String(c)];
+    if (!info) return;
+    const isPlateau = c === 16 && info.efficiency < 55;
+    const effClass = info.efficiency > 90 ? 'good' : info.efficiency > 60 ? 'warn' : 'bad';
+    const row = '<tr class="'+(isPlateau ? 'plateau' : '')+'">'
+      + '<td><strong>'+c+'</strong></td>'
+      + '<td>'+info.mean.toFixed(4)+'s</td>'
+      + '<td>'+info.std.toFixed(4)+'s</td>'
+      + '<td class="'+effClass+'">'+info.speedup.toFixed(2)+'x</td>'
+      + '<td>'+c+'x</td>'
+      + '<td class="'+effClass+'">'+info.efficiency.toFixed(1)+'%</td>'
+      + '<td>'+info.runs+'</td>'
+      + '</tr>';
+    tbody.innerHTML += row;
+  });
+}
+
+function updateVisibility() {
+  const rb = document.getElementById('runtimeBox');
+  const sb = document.getElementById('speedupBox');
+  if (currentView === 'runtime')  { rb.style.display='block'; sb.style.display='none'; }
+  else if (currentView === 'speedup') { rb.style.display='none';  sb.style.display='block'; }
+  else { rb.style.display='block'; sb.style.display='block'; }
+}
+
+function selectSize(size, btn) {
+  currentSize = size;
+  document.querySelectorAll('#sizeTabs .tab').forEach(function(t) { t.classList.remove('active'); });
+  btn.classList.add('active');
+  updateCharts();
+}
+
+function selectView(view, btn) {
+  currentView = view;
+  document.querySelectorAll('.view-tab').forEach(function(t) { t.classList.remove('active'); });
+  btn.classList.add('active');
+  updateVisibility();
+}
+
+function buildOverviewChart() {
+  if (overviewChart) overviewChart.destroy();
+  const ctx = document.getElementById('overviewChart').getContext('2d');
+  const sizeColors = ['#00b4d8','#1D9E75','#2563a8','#d97706','#dc2626','#7c3aed'];
+  const datasets = SIZES.map(function(size, i) {
+    return {
+      label: size + ' points',
+      data: CORES.map(function(c) { return DATA[size] && DATA[size][String(c)] ? DATA[size][String(c)].speedup : 0; }),
+      borderColor: sizeColors[i] || '#999',
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 4,
+      pointBackgroundColor: sizeColors[i] || '#999',
+      tension: 0.1
+    };
+  });
+  datasets.unshift({
+    label: 'Ideal',
+    data: CORES,
+    borderColor: '#999',
+    borderDash: [6,4],
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    pointRadius: 0,
+  });
+  overviewChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: CORES.map(function(c) { return c + ' cores'; }), datasets: datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        y: { title: { display: true, text: 'Speedup' }, beginAtZero: true },
+        x: { title: { display: true, text: 'Number of Cores' } }
+      }
+    }
+  });
+}
+
+function buildBaunCharts() {
+  function barColor(eff) {
+    if (eff > 85) return '#4ade80';
+    if (eff > 50) return '#facc15';
+    return '#f87171';
+  }
+
+  const valuePlugin = {
+    id: 'valueLabels',
+    afterDatasetsDraw: function(chart) {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach(function(ds, i) {
+        chart.getDatasetMeta(i).data.forEach(function(bar, idx) {
+          const val = ds.data[idx];
+          if (!val) return;
+          const label = val >= 100 ? val.toFixed(1) : val >= 1 ? val.toFixed(2) : val.toFixed(3);
+          ctx.save();
+          ctx.fillStyle = '#111';
+          ctx.font = 'bold 10px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, bar.x, bar.y - 4);
+          ctx.restore();
+        });
+      });
+    }
+  };
+
+  SIZES.forEach(function(size) {
+    if (!DATA[size]) return;
+    const d = DATA[size];
+    const means    = CORES.map(function(c) { return d[String(c)] ? d[String(c)].mean      : 0; });
+    const speedups = CORES.map(function(c) { return d[String(c)] ? d[String(c)].speedup   : 0; });
+    const effs     = CORES.map(function(c) { return d[String(c)] ? d[String(c)].efficiency: 0; });
+    const colors   = effs.map(function(e) { return barColor(e); });
+    const labels   = CORES.map(function(c) { return c + 'c'; });
+
+    const commonOpts = function(yLabel) {
+      return {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: yLabel, font: { size: 11 } }, ticks: { font: { size: 10 } } },
+          x: { title: { display: true, text: 'Number of Cores', font: { size: 11 } }, ticks: { font: { size: 10 } } }
+        }
+      };
+    };
+
+    var rtEl = document.getElementById('rt_' + size.replace('.',''));
+    if (rtEl) {
+      new Chart(rtEl, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ data: means, backgroundColor: colors, borderWidth: 0 }] },
+        options: commonOpts('Time [s]'),
+        plugins: [valuePlugin]
+      });
+    }
+
+    var spEl = document.getElementById('sp_' + size.replace('.',''));
+    if (spEl) {
+      new Chart(spEl, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ data: speedups, backgroundColor: colors, borderWidth: 0 }] },
+        options: commonOpts('Speedup'),
+        plugins: [valuePlugin]
+      });
+    }
+  });
+}
+
+function buildPlateauChart() {
+  const sizes = ['1B', '5B', '7.5B', '10B', '25B'];
+  const improvements = [0.4, 1.1, 1.5, 1.1, 2.5];
+  const ctx = document.getElementById('plateauTrendChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sizes,
+      datasets: [{
+        label: '8->16 Core Improvement (%)',
+        data: improvements,
+        backgroundColor: improvements.map(function(v) { return v > 2 ? 'rgba(215,119,6,0.8)' : 'rgba(220,38,38,0.8)'; }),
+        borderColor: improvements.map(function(v) { return v > 2 ? 'rgba(215,119,6,1)' : 'rgba(220,38,38,1)'; }),
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function(ctx) { return 'Improvement: '+ctx.raw+'%'; } } }
+      },
+      scales: {
+        y: { title: { display: true, text: 'Improvement over 8 cores (%)' }, beginAtZero: true, max: 5, ticks: { callback: function(v) { return v + '%'; } } },
+        x: { title: { display: true, text: 'Problem Size' } }
+      }
+    }
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────
+(async function init() {
+  const msg = document.getElementById('loadingMsg');
+  if (msg) msg.style.display = 'block';
+  try {
+    await loadCSV();
+  } catch(e) {
+    console.error('CSV load failed:', e);
+    if (msg) msg.textContent = 'Failed to load data. Make sure CSV file is deployed.';
+    return;
+  }
+  if (msg) msg.style.display = 'none';
+
+  currentSize = '1B';
+  document.querySelectorAll('#sizeTabs .tab').forEach(function(t) {
+    t.classList.toggle('active', t.textContent.trim() === '1B');
+  });
+
+  updateCharts();
+  buildOverviewChart();
+  buildBaunCharts();
+  buildPlateauChart();
+
+  // Init matrix
+  await loadAllMatrixData();
+  // Set default N=3500 active
+  const defaultMatrixBtn = document.querySelector('#matrixNTabs .tab[onclick*="3500"]');
+  if (defaultMatrixBtn) {
+    matrixCurrentN = '3500';
+    document.querySelectorAll('#matrixNTabs .tab').forEach(function(t) { t.classList.remove('active'); });
+    defaultMatrixBtn.classList.add('active');
+    updateMatrixCharts();
+    buildMatrixGustafsonChart();
+  }
+
+  // Init HPL
+  await loadHPLData();
+  buildHPLCharts();
+
+  // Init Task Distributor
+  await loadTDData();
+  const defaultTDBtn = document.querySelector('#tdResTabs .tab[onclick*="3200x2400"]');
+  if (defaultTDBtn) {
+    tdCurrentRes = '3200x2400';
+    document.querySelectorAll('#tdResTabs .tab').forEach(function(t) { t.classList.remove('active'); });
+    defaultTDBtn.classList.add('active');
+    updateTDCharts();
+    buildTDOverviewChart();
+  }
+})();
+</script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f7fa; color: #1a1a2e; }
+
+  header {
+    background: linear-gradient(135deg, #1a3a5c 0%, #0d2137 100%);
+    color: white; padding: 32px 40px;
+    border-bottom: 4px solid #1D9E75;
+  }
+  header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 6px; }
+  header p { color: #93c5fd; font-size: 1rem; }
+  header .meta { margin-top: 12px; display: flex; gap: 24px; flex-wrap: wrap; }
+  header .meta span { background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+  .section { background: white; border-radius: 12px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .section h2 { font-size: 1.3rem; color: #1a3a5c; margin-bottom: 6px; border-left: 4px solid #1D9E75; padding-left: 12px; }
+  .section p { color: #555; font-size: 0.95rem; line-height: 1.6; margin-top: 8px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab { padding: 8px 20px; border-radius: 6px; border: 2px solid #1a3a5c; background: white;
+         color: #1a3a5c; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; }
+  .tab.active { background: #1a3a5c; color: white; }
+  .tab:hover:not(.active) { background: #f0f4ff; }
+
+  .view-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .view-tab { padding: 6px 16px; border-radius: 6px; border: 2px solid #1D9E75; background: white;
+              color: #1D9E75; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; }
+  .view-tab.active { background: #1D9E75; color: white; }
+
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 768px) { .chart-grid { grid-template-columns: 1fr; } }
+
+  .chart-box { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+  .chart-box h3 { font-size: 0.95rem; color: #374151; margin-bottom: 12px; text-align: center; }
+  .chart-box canvas { max-height: 280px; }
+
+  .stats-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 12px; }
+  .stats-table th { background: #1a3a5c; color: white; padding: 10px 14px; text-align: left; }
+  .stats-table td { padding: 9px 14px; border-bottom: 1px solid #f0f0f0; }
+  .stats-table tr:hover td { background: #f5f7ff; }
+  .stats-table .plateau { background: #fff3cd !important; }
+  .stats-table .good { color: #1D9E75; font-weight: 600; }
+  .stats-table .warn { color: #d97706; font-weight: 600; }
+  .stats-table .bad { color: #dc2626; font-weight: 600; }
+
+  .finding-box { background: #f0fdf4; border-left: 4px solid #1D9E75; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .finding-box.warn { background: #fffbeb; border-color: #d97706; }
+  .finding-box.info { background: #eff6ff; border-color: #2563a8; }
+  .finding-box h4 { font-size: 0.95rem; margin-bottom: 6px; }
+  .finding-box p { font-size: 0.9rem; color: #444; }
+
+  .plateau-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .plateau-table th { background: #374151; color: white; padding: 10px 14px; }
+  .plateau-table td { padding: 9px 14px; border-bottom: 1px solid #e5e7eb; text-align: center; }
+  .plateau-table tr:hover td { background: #f9fafb; }
+
+  footer { text-align: center; padding: 24px; color: #666; font-size: 0.85rem; border-top: 1px solid #e5e7eb; margin-top: 24px; }
+  footer a { color: #1D9E75; text-decoration: none; }
+
+  .baun-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  @media (max-width: 700px) {
+    .baun-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-grid { grid-template-columns: 1fr !important; }
+    header h1 { font-size: 1.4rem; }
+    header .meta { gap: 8px; }
+    .tabs { gap: 4px; }
+    .tab { padding: 6px 12px; font-size: 0.82rem; }
+    .section { padding: 18px; }
+  }
+  @media (max-width: 480px) {
+    .baun-grid { grid-template-columns: 1fr; }
+    header { padding: 20px; }
+  }
+
+</style>
+</head>
+<body>
+
+<script>
+// ── Matrix Multiply Section ───────────────────────────────────
+// CSVs: matrix_results_1000.csv, _1500, _3000, _3250, _3500, _3750, _4000
+// matrix_results.csv = N=2000
+
+const MATRIX_CSV_MAP = {
+  '1000': 'matrix_results_1000.csv',
+  '1500': 'matrix_results_1500.csv',
+  '2000': 'matrix_results.csv',
+  '3000': 'matrix_results_3000.csv',
+  '3250': 'matrix_results_3250.csv',
+  '3500': 'matrix_results_3500.csv',
+  '3750': 'matrix_results_3750.csv',
+  '4000': 'matrix_results_4000.csv',
+};
+
+const MATRIX_N_ORDER = ['1000','1500','2000','3000','3250','3500','3750','4000'];
+const MATRIX_CORES = [1,2,4,8,16,32];
+let MATRIX_DATA = {};
+let matrixCurrentN = '3500';
+let matrixRuntimeChart = null;
+let matrixSpeedupChart = null;
+let matrixGustafsonChart = null;
+
+async function loadMatrixCSV(n, filename) {
+  try {
+    const response = await fetch(filename);
+    const text = await response.text();
+    const lines = text.trim().split('\n');
+    const raw = {};
+    for (let i = 1; i < lines.length; i++) {
+      const vals = lines[i].split(',');
+      if (vals.length < 4) continue;
+      const cores = vals[0].trim();
+      const time  = parseFloat(vals[3].trim());
+      if (isNaN(time)) continue;
+      if (!raw[cores]) raw[cores] = [];
+      raw[cores].push(time);
+    }
+    // Compute stats
+    MATRIX_DATA[n] = {};
+    const hasBaseline = raw['1'] && raw['1'].length > 0;
+    const baseline = hasBaseline ? matMean(raw['1']) : null;
+    for (const cores of ['1','2','4','8','16','32']) {
+      if (!raw[cores]) continue;
+      const times = raw[cores];
+      const m = matMean(times);
+      const s = matStd(times);
+      const speedup = baseline ? baseline / m : null;
+      MATRIX_DATA[n][cores] = {
+        mean: m, std: s,
+        speedup: speedup,
+        efficiency: speedup ? (speedup / parseInt(cores)) * 100 : null,
+        runs: times.length,
+        min: Math.min(...times),
+        max: Math.max(...times),
+        hasBaseline: hasBaseline,
+      };
+    }
+  } catch(e) {
+    console.error('Failed to load matrix CSV for N='+n, e);
+  }
+}
+
+function matMean(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function matStd(arr) {
+  if (arr.length < 2) return 0;
+  const m = matMean(arr);
+  return Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/(arr.length-1));
+}
+
+async function loadAllMatrixData() {
+  const promises = MATRIX_N_ORDER.map(n => loadMatrixCSV(n, MATRIX_CSV_MAP[n]));
+  await Promise.all(promises);
+}
+
+function matBarColor(eff) {
+  if (eff === null) return 'rgba(150,150,150,0.6)';
+  if (eff > 85) return 'rgba(29,158,117,0.8)';
+  if (eff > 50) return 'rgba(234,179,8,0.8)';
+  return 'rgba(220,38,38,0.8)';
+}
+
+function updateMatrixCharts() {
+  const n = matrixCurrentN;
+  const d = MATRIX_DATA[n];
+  if (!d) return;
+  // Update title
+  const titleEl = document.getElementById('matrixRuntimeTitle');
+  if (titleEl) titleEl.textContent = 'Runtime — N='+n+' (Mean of '+((d['1']||d['32']||{runs:5}).runs)+' runs)';
+
+  const hasBaseline = d['1'] && d['1'].hasBaseline;
+  const cores = MATRIX_CORES;
+  const means    = cores.map(c => d[String(c)] ? d[String(c)].mean      : null);
+  const speedups = cores.map(c => d[String(c)] && d[String(c)].speedup !== null ? d[String(c)].speedup : null);
+  const effs     = cores.map(c => d[String(c)] ? d[String(c)].efficiency : null);
+  const colors   = effs.map(e => matBarColor(e));
+
+  // Runtime chart
+  if (matrixRuntimeChart) matrixRuntimeChart.destroy();
+  const rCtx = document.getElementById('matrixRuntimeChart').getContext('2d');
+  matrixRuntimeChart = new Chart(rCtx, {
+    type: 'bar',
+    data: {
+      labels: cores.map(c => c+'c'),
+      datasets: [{
+        label: 'Mean Time (s)',
+        data: means,
+        backgroundColor: colors,
+        borderColor: colors.map(c => c.replace('0.8','1')),
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.raw === null) return 'No data';
+              const c = cores[ctx.dataIndex];
+              const info = d[String(c)];
+              if (!info) return '';
+              const lines = ['Time: '+ctx.raw.toFixed(2)+'s'];
+              if (info.speedup !== null) lines.push('Speedup: '+info.speedup.toFixed(2)+'x');
+              if (info.efficiency !== null) lines.push('Efficiency: '+info.efficiency.toFixed(1)+'%');
+              return lines;
+            }
+          }
+        }
+      },
+      scales: {
+        y: { title: { display: true, text: 'Time [s]' }, beginAtZero: true },
+        x: { title: { display: true, text: 'Number of Cores' } }
+      }
+    }
+  });
+
+  // Speedup chart
+  if (matrixSpeedupChart) matrixSpeedupChart.destroy();
+  const sCtx = document.getElementById('matrixSpeedupChart').getContext('2d');
+  if (hasBaseline) {
+    matrixSpeedupChart = new Chart(sCtx, {
+      type: 'bar',
+      data: {
+        labels: cores.map(c => c+'c'),
+        datasets: [
+          {
+            label: 'Actual Speedup',
+            data: speedups,
+            backgroundColor: colors,
+            borderColor: colors.map(c => c.replace('0.8','1')),
+            borderWidth: 1,
+            order: 2
+          },
+          {
+            label: 'Ideal',
+            data: cores,
+            type: 'line',
+            borderColor: 'rgba(37,99,168,0.7)',
+            borderDash: [5,5],
+            borderWidth: 2,
+            pointRadius: 3,
+            fill: false,
+            order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                if (ctx.datasetIndex === 1) return 'Ideal: '+ctx.raw+'x';
+                if (ctx.raw === null) return 'No data';
+                const c = cores[ctx.dataIndex];
+                const info = d[String(c)];
+                if (!info) return '';
+                return ['Speedup: '+ctx.raw.toFixed(2)+'x', 'Efficiency: '+(info.efficiency||0).toFixed(1)+'%'];
+              }
+            }
+          }
+        },
+        scales: {
+          y: { title: { display: true, text: 'Speedup' }, beginAtZero: true },
+          x: { title: { display: true, text: 'Number of Cores' } }
+        }
+      }
+    });
+    document.getElementById('matrixSpeedupBox').style.display = 'block';
+    document.getElementById('matrixNoBaseline').style.display = 'none';
+  } else {
+    document.getElementById('matrixSpeedupBox').style.display = 'none';
+    document.getElementById('matrixNoBaseline').style.display = 'block';
+  }
+
+  // Stats table
+  updateMatrixTable(n);
+}
+
+function updateMatrixTable(n) {
+  const d = MATRIX_DATA[n];
+  if (!d) return;
+  const tbody = document.getElementById('matrixStatsBody');
+  tbody.innerHTML = '';
+  MATRIX_CORES.forEach(function(c) {
+    const info = d[String(c)];
+    if (!info) {
+      tbody.innerHTML += '<tr><td><strong>'+c+'</strong></td><td colspan="6" style="color:#dc2626">Memory swap / No data</td></tr>';
+      return;
+    }
+    const effClass = info.efficiency === null ? '' : info.efficiency > 90 ? 'good' : info.efficiency > 50 ? 'warn' : 'bad';
+    tbody.innerHTML += '<tr>'
+      + '<td><strong>'+c+'</strong></td>'
+      + '<td>'+info.mean.toFixed(2)+'s</td>'
+      + '<td>'+info.std.toFixed(2)+'s</td>'
+      + '<td class="'+effClass+'">'+(info.speedup !== null ? info.speedup.toFixed(2)+'x' : 'N/A')+'</td>'
+      + '<td>'+c+'x</td>'
+      + '<td class="'+effClass+'">'+(info.efficiency !== null ? info.efficiency.toFixed(1)+'%' : 'N/A')+'</td>'
+      + '<td>'+info.runs+'</td>'
+      + '</tr>';
+  });
+}
+
+function selectMatrixN(n, btn) {
+  matrixCurrentN = n;
+  document.querySelectorAll('#matrixNTabs .tab').forEach(function(t) { t.classList.remove('active'); });
+  btn.classList.add('active');
+
+  // Show/hide memory warning
+  const memWarning = document.getElementById('matrixMemWarning');
+  if (n === '4000') {
+    memWarning.innerHTML = '⚠️ <strong>N=4000:</strong> Memory swap occurred at 1–8 cores on Pi3 (N²×8 bytes per process × 4 processes = ~512MB, exceeding Pi3 1GB RAM). Only 16 and 32 cores were successfully tested. N=5000 also failed. Sweet spot confirmed at N=3500.';
+    memWarning.style.display = 'block';
+  } else if (n === '3750') {
+    memWarning.innerHTML = '⚠️ <strong>N=3750:</strong> Runs successfully but very compute-heavy (~8.5 min at 1 core). Used to confirm N=3500 as the sweet spot.';
+    memWarning.style.display = 'block';
+  } else if (n === '3250') {
+    memWarning.innerHTML = '🔍 <strong>N=3250:</strong> Crossover point — parallelization limit shifts past 8 cores here. At N&lt;3250, limit is at 4–8 cores. At N≥3250, 16 and 32 cores start showing improvement.';
+    memWarning.style.display = 'block';
+  } else {
+    memWarning.style.display = 'none';
+  }
+
+  updateMatrixCharts();
+  buildMatrixGustafsonChart();
+}
+
+function buildMatrixGustafsonChart() {
+  // 32-core speedup vs N — shows Gustafson's Law
+  if (matrixGustafsonChart) matrixGustafsonChart.destroy();
+  const ctx = document.getElementById('matrixGustafsonChart').getContext('2d');
+  const ns = MATRIX_N_ORDER.filter(n => MATRIX_DATA[n] && MATRIX_DATA[n]['32'] && MATRIX_DATA[n]['32'].speedup !== null);
+  const speedups32 = ns.map(n => MATRIX_DATA[n]['32'].speedup);
+  const colors = speedups32.map((s,i) => ns[i] === '3500' ? 'rgba(29,158,117,0.9)' : 'rgba(37,99,168,0.7)');
+
+  matrixGustafsonChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ns.map(n => 'N='+n),
+      datasets: [{
+        label: '32-core Speedup',
+        data: speedups32,
+        backgroundColor: colors,
+        borderColor: colors.map(c => c.replace('0.7','1').replace('0.9','1')),
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const n = ns[ctx.dataIndex];
+              const eff = MATRIX_DATA[n]['32'].efficiency;
+              return ['Speedup: '+ctx.raw.toFixed(2)+'x', 'Efficiency: '+eff.toFixed(1)+'%'];
+            }
+          }
+        }
+      },
+      scales: {
+        y: { title: { display: true, text: '32-core Speedup' }, beginAtZero: true },
+        x: { title: { display: true, text: 'Matrix Size N' } }
+      }
+    }
+  });
+}
+
+// ── HPL Section ───────────────────────────────────────────────
+const HPL_CSV_FILES = ['hpl_results.csv', 'hpl_results_8_16.csv'];
+const HPL_CORES_ORDER = [1, 2, 4, 8, 16, 24, 32];
+const HPL_N_MAP = {1:5000, 2:5500, 4:6000, 8:8000, 16:10000, 24:13000, 32:15000};
+let HPL_DATA = {};
+let hplGflopsChart = null;
+let hplPerCoreChart = null;
+let hplCandleChart = null;
+
+function hplMean(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function hplStd(arr) {
+  if (arr.length < 2) return 0;
+  const m = hplMean(arr);
+  return Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/(arr.length-1));
+}
+
+async function loadHPLData() {
+  const raw = {};
+  for (const fname of HPL_CSV_FILES) {
+    try {
+      const r = await fetch(fname);
+      const text = await r.text();
+      const lines = text.trim().split('\n');
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(',');
+        if (vals.length < 4) continue;
+        const cores = parseInt(vals[0].trim());
+        const gflops = parseFloat(vals[3].trim());
+        if (isNaN(cores) || isNaN(gflops)) continue;
+        if (!raw[cores]) raw[cores] = [];
+        raw[cores].push(gflops);
+      }
+    } catch(e) { console.error('HPL CSV error:', fname, e); }
+  }
+
+  HPL_DATA = {};
+  for (const c of HPL_CORES_ORDER) {
+    if (!raw[c] || raw[c].length === 0) continue;
+    const vals = raw[c];
+    HPL_DATA[c] = {
+      mean: hplMean(vals),
+      std:  hplStd(vals),
+      min:  Math.min(...vals),
+      max:  Math.max(...vals),
+      runs: vals.length,
+      N:    HPL_N_MAP[c] || 0,
+    };
+  }
+  console.log('[HPL] Data loaded:', Object.keys(HPL_DATA));
+}
+
+function hplBarColor(cores) {
+  if (cores === 8) return 'rgba(220,38,38,0.8)';   // red — dip
+  if (cores <= 4)  return 'rgba(29,158,117,0.8)';  // green
+  return 'rgba(37,99,168,0.8)';                     // blue — recovery
+}
+
+function buildHPLCharts() {
+  const cores = HPL_CORES_ORDER.filter(c => HPL_DATA[c]);
+  const means  = cores.map(c => HPL_DATA[c].mean);
+  const mins   = cores.map(c => HPL_DATA[c].min);
+  const maxs   = cores.map(c => HPL_DATA[c].max);
+  const stds   = cores.map(c => HPL_DATA[c].std);
+  const labels = cores.map(c => c + 'c');
+  const colors = cores.map(c => hplBarColor(c));
+
+  // ── Chart 1: GFLOPS bar with error bars (candlestick style) ──
+  if (hplCandleChart) hplCandleChart.destroy();
+  const ctx1 = document.getElementById('hplCandleChart').getContext('2d');
+
+  // Custom error bar plugin
+  const errorBarPlugin = {
+    id: 'errorBars',
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      const meta = chart.getDatasetMeta(0);
+      meta.data.forEach((bar, i) => {
+        const x = bar.x;
+        const yMin = chart.scales.y.getPixelForValue(mins[i]);
+        const yMax = chart.scales.y.getPixelForValue(maxs[i]);
+        const yMean = chart.scales.y.getPixelForValue(means[i]);
+        ctx.save();
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 2;
+        // Vertical line
+        ctx.beginPath();
+        ctx.moveTo(x, yMin);
+        ctx.lineTo(x, yMax);
+        ctx.stroke();
+        // Min cap
+        ctx.beginPath();
+        ctx.moveTo(x - 6, yMin);
+        ctx.lineTo(x + 6, yMin);
+        ctx.stroke();
+        // Max cap
+        ctx.beginPath();
+        ctx.moveTo(x - 6, yMax);
+        ctx.lineTo(x + 6, yMax);
+        ctx.stroke();
+        // Mean label
+        ctx.fillStyle = '#111';
+        ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(means[i].toFixed(3), x, yMax - 6);
+        ctx.restore();
+      });
+    }
+  };
+
+  hplCandleChart = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Mean GFLOPS',
+        data: means,
+        backgroundColor: colors,
+        borderColor: colors.map(c => c.replace('0.8','1')),
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const c = cores[ctx.dataIndex];
+              const d = HPL_DATA[c];
+              return [
+                'Mean: '+d.mean.toFixed(4)+' GFLOPS',
+                'Min:  '+d.min.toFixed(4)+' GFLOPS',
+                'Max:  '+d.max.toFixed(4)+' GFLOPS',
+                'Std:  '+d.std.toFixed(4),
+                'Runs: '+d.runs,
+                'N:    '+d.N.toLocaleString(),
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          title: { display: true, text: 'GFLOPS (higher = better)' },
+          beginAtZero: true,
+        },
+        x: { title: { display: true, text: 'Number of Cores' } }
+      }
+    },
+    plugins: [errorBarPlugin]
+  });
+
+  // ── Chart 2: GFLOPS per core (efficiency) ──
+  if (hplPerCoreChart) hplPerCoreChart.destroy();
+  const ctx2 = document.getElementById('hplPerCoreChart').getContext('2d');
+  const perCore = cores.map(c => HPL_DATA[c].mean / c);
+
+  hplPerCoreChart = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'GFLOPS per Core',
+        data: perCore,
+        backgroundColor: colors,
+        borderColor: colors.map(c => c.replace('0.8','1')),
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const c = cores[ctx.dataIndex];
+              return ['GFLOPS/core: '+ctx.raw.toFixed(4), 'Total: '+HPL_DATA[c].mean.toFixed(3)+' GFLOPS'];
+            }
+          }
+        }
+      },
+      scales: {
+        y: { title: { display: true, text: 'GFLOPS per Core' }, beginAtZero: true },
+        x: { title: { display: true, text: 'Number of Cores' } }
+      }
+    }
+  });
+
+  // ── Update stats table ──
+  updateHPLTable(cores);
+}
+
+function updateHPLTable(cores) {
+  const tbody = document.getElementById('hplStatsBody');
+  tbody.innerHTML = '';
+  cores.forEach(function(c) {
+    const d = HPL_DATA[c];
+    if (!d) return;
+    const isDip = (c === 8);
+    tbody.innerHTML += '<tr'+(isDip ? ' style="background:#fff3cd"' : '')+'>'
+      + '<td><strong>'+c+'</strong></td>'
+      + '<td>'+d.N.toLocaleString()+'</td>'
+      + '<td'+(isDip?' class="bad"':' style="color:#2563a8;font-weight:600"')+'>'+d.mean.toFixed(4)+'</td>'
+      + '<td>'+d.std.toFixed(4)+'</td>'
+      + '<td>'+d.min.toFixed(4)+'</td>'
+      + '<td>'+d.max.toFixed(4)+'</td>'
+      + '<td>'+(d.mean/c).toFixed(4)+'</td>'
+      + '<td>'+d.runs+'</td>'
+      + '</tr>';
+  });
+}
+
+
+// ── Task Distributor Section ──────────────────────────────────
+const TD_CSV = 'td_results.csv';
+const TD_RESOLUTIONS = ['400x300','800x600','1600x1200','3200x2400'];
+const TD_NODES = [1,2,4,8];
+let TD_DATA = {};
+let tdCurrentRes = '3200x2400';
+let tdRuntimeChart = null;
+let tdSpeedupChart = null;
+let tdTimingChart = null;
+let tdOverviewChart = null;
+
+function tdMean(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function tdStd(arr) {
+  if (arr.length < 2) return 0;
+  const m = tdMean(arr);
+  return Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/(arr.length-1));
+}
+
+async function loadTDData() {
+  try {
+    const response = await fetch(TD_CSV);
+    const text = await response.text();
+    const lines = text.trim().split('\n');
+
+    const raw = {};
+    for (let i = 1; i < lines.length; i++) {
+      const vals = lines[i].split(',');
+      if (vals.length < 8) continue;
+      const nodes    = parseInt(vals[0].trim());
+      const width    = vals[1].trim();
+      const height   = vals[2].trim();
+      const seq1     = parseFloat(vals[4].trim());
+      const parallel = parseFloat(vals[5].trim());
+      const seq2     = parseFloat(vals[6].trim());
+      const total    = parseFloat(vals[7].trim());
+      if (isNaN(nodes)||isNaN(total)) continue;
+      const res = `${width}x${height}`;
+      if (!raw[res]) raw[res] = {};
+      if (!raw[res][nodes]) raw[res][nodes] = {seq1:[],parallel:[],seq2:[],total:[]};
+      raw[res][nodes].seq1.push(seq1);
+      raw[res][nodes].parallel.push(parallel);
+      raw[res][nodes].seq2.push(seq2);
+      raw[res][nodes].total.push(total);
+    }
+
+    TD_DATA = {};
+    for (const res of TD_RESOLUTIONS) {
+      if (!raw[res]) continue;
+      const baseline = raw[res][1] ? tdMean(raw[res][1].total) : null;
+      TD_DATA[res] = {};
+      for (const n of TD_NODES) {
+        if (!raw[res][n]) continue;
+        const mean  = tdMean(raw[res][n].total);
+        const std   = tdStd(raw[res][n].total);
+        const sp    = baseline ? baseline / mean : null;
+        TD_DATA[res][n] = {
+          mean, std, runs: raw[res][n].total.length,
+          seq1:     tdMean(raw[res][n].seq1),
+          parallel: tdMean(raw[res][n].parallel),
+          seq2:     tdMean(raw[res][n].seq2),
+          speedup:  sp,
+          efficiency: sp ? (sp / n) * 100 : null,
+        };
+      }
+    }
+    console.log('[TD] Data loaded:', Object.keys(TD_DATA));
+  } catch(e) {
+    console.error('[TD] Load error:', e);
+  }
+}
+
+function tdBarColor(eff) {
+  if (eff === null) return 'rgba(150,150,150,0.6)';
+  if (eff > 85) return 'rgba(29,158,117,0.8)';
+  if (eff > 50) return 'rgba(234,179,8,0.8)';
+  return 'rgba(220,38,38,0.8)';
+}
+
+function updateTDCharts() {
+  const res = tdCurrentRes;
+  const d = TD_DATA[res];
+  if (!d) return;
+
+  const nodes   = TD_NODES;
+  const means   = nodes.map(n => d[n] ? d[n].mean      : 0);
+  const speedups= nodes.map(n => d[n] && d[n].speedup !== null ? d[n].speedup : 0);
+  const effs    = nodes.map(n => d[n] ? d[n].efficiency : null);
+  const colors  = effs.map(e => tdBarColor(e));
+  const labels  = nodes.map(n => n+'n');
+
+  // Runtime chart
+  if (tdRuntimeChart) tdRuntimeChart.destroy();
+  const rCtx = document.getElementById('tdRuntimeChart').getContext('2d');
+  tdRuntimeChart = new Chart(rCtx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Total Time (s)',
+        data: means,
+        backgroundColor: colors,
+        borderColor: colors.map(c=>c.replace('0.8','1')),
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const n = nodes[ctx.dataIndex];
+              const info = d[n];
+              if (!info) return '';
+              return [
+                'Total: '+ctx.raw.toFixed(3)+'s',
+                'seq1: '+info.seq1.toFixed(3)+'s',
+                'parallel: '+info.parallel.toFixed(3)+'s',
+                'seq2: '+info.seq2.toFixed(3)+'s',
+                info.speedup !== null ? 'Speedup: '+info.speedup.toFixed(2)+'x' : '',
+              ].filter(Boolean);
+            }
+          }
+        }
+      },
+      scales: {
+        y: { title: { display: true, text: 'Time [s]' }, beginAtZero: true },
+        x: { title: { display: true, text: 'Number of Nodes' } }
+      }
+    }
+  });
+
+  // Speedup chart
+  if (tdSpeedupChart) tdSpeedupChart.destroy();
+  const sCtx = document.getElementById('tdSpeedupChart').getContext('2d');
+  tdSpeedupChart = new Chart(sCtx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Actual Speedup',
+          data: speedups,
+          backgroundColor: colors,
+          borderColor: colors.map(c=>c.replace('0.8','1')),
+          borderWidth: 1,
+          order: 2
+        },
+        {
+          label: 'Ideal',
+          data: nodes,
+          type: 'line',
+          borderColor: 'rgba(37,99,168,0.7)',
+          borderDash: [5,5],
+          borderWidth: 2,
+          pointRadius: 3,
+          fill: false,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.datasetIndex===1) return 'Ideal: '+ctx.raw+'x';
+              const n = nodes[ctx.dataIndex];
+              const info = d[n];
+              if (!info) return '';
+              return [
+                'Speedup: '+ctx.raw.toFixed(2)+'x',
+                'Ideal: '+n+'x',
+                'Efficiency: '+(info.efficiency||0).toFixed(1)+'%',
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        y: { title: { display: true, text: 'Speedup' }, beginAtZero: true },
+        x: { title: { display: true, text: 'Number of Nodes' } }
+      }
+    }
+  });
+
+  // Timing breakdown stacked chart
+  if (tdTimingChart) tdTimingChart.destroy();
+  const tCtx = document.getElementById('tdTimingChart').getContext('2d');
+  tdTimingChart = new Chart(tCtx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'seq1 — SSH Dispatch',
+          data: nodes.map(n => d[n] ? d[n].seq1 : 0),
+          backgroundColor: 'rgba(37,99,168,0.8)',
+          stack: 'timing',
+        },
+        {
+          label: 'Parallel — POV-Ray Render',
+          data: nodes.map(n => d[n] ? d[n].parallel : 0),
+          backgroundColor: 'rgba(29,158,117,0.8)',
+          stack: 'timing',
+        },
+        {
+          label: 'seq2 — ImageMagick Stitch',
+          data: nodes.map(n => d[n] ? d[n].seq2 : 0),
+          backgroundColor: 'rgba(220,38,38,0.8)',
+          stack: 'timing',
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return ctx.dataset.label+': '+ctx.raw.toFixed(3)+'s';
+            }
+          }
+        }
+      },
+      scales: {
+        y: { title: { display: true, text: 'Time [s]' }, beginAtZero: true, stacked: true },
+        x: { title: { display: true, text: 'Number of Nodes' }, stacked: true }
+      }
+    }
+  });
+
+  // Update stats table
+  updateTDTable(res);
+
+  // Update title
+  const titleEl = document.getElementById('tdRuntimeTitle');
+  if (titleEl) titleEl.textContent = 'Runtime — '+res+' (Mean of '+((d[1]||d[2]||{runs:5}).runs)+' runs)';
+}
+
+function updateTDTable(res) {
+  const d = TD_DATA[res];
+  if (!d) return;
+  const tbody = document.getElementById('tdStatsBody');
+  tbody.innerHTML = '';
+  TD_NODES.forEach(function(n) {
+    const info = d[n];
+    if (!info) { tbody.innerHTML += '<tr><td><strong>'+n+'</strong></td><td colspan="8">No data</td></tr>'; return; }
+    const effClass = info.efficiency === null ? '' : info.efficiency > 85 ? 'good' : info.efficiency > 50 ? 'warn' : 'bad';
+    tbody.innerHTML += '<tr>'
+      + '<td><strong>'+n+'</strong></td>'
+      + '<td>'+info.mean.toFixed(3)+'s</td>'
+      + '<td>'+info.std.toFixed(3)+'s</td>'
+      + '<td style="color:#2563a8;font-family:monospace">'+info.seq1.toFixed(3)+'s</td>'
+      + '<td style="color:#1D9E75;font-family:monospace">'+info.parallel.toFixed(3)+'s</td>'
+      + '<td style="color:#dc2626;font-family:monospace">'+info.seq2.toFixed(3)+'s</td>'
+      + '<td class="'+effClass+'">'+(info.speedup!==null?info.speedup.toFixed(2)+'x':'N/A')+'</td>'
+      + '<td class="'+effClass+'">'+(info.efficiency!==null?info.efficiency.toFixed(1)+'%':'N/A')+'</td>'
+      + '<td>'+info.runs+'</td>'
+      + '</tr>';
+  });
+}
+
+function selectTDRes(res, btn) {
+  tdCurrentRes = res;
+  document.querySelectorAll('#tdResTabs .tab').forEach(function(t) { t.classList.remove('active'); });
+  btn.classList.add('active');
+  updateTDCharts();
+}
+
+function buildTDOverviewChart() {
+  if (tdOverviewChart) tdOverviewChart.destroy();
+  const ctx = document.getElementById('tdOverviewChart').getContext('2d');
+  const resColors = ['#1D9E75','#2563a8','#d97706','#dc2626'];
+  const datasets = TD_RESOLUTIONS.map(function(res, i) {
+    return {
+      label: res,
+      data: TD_NODES.map(function(n) { return TD_DATA[res] && TD_DATA[res][n] && TD_DATA[res][n].speedup !== null ? TD_DATA[res][n].speedup : 0; }),
+      borderColor: resColors[i],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 4,
+      pointBackgroundColor: resColors[i],
+      tension: 0.1,
+    };
+  });
+  datasets.unshift({
+    label: 'Ideal',
+    data: TD_NODES,
+    borderColor: '#999',
+    borderDash: [6,4],
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    pointRadius: 0,
+  });
+  tdOverviewChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: TD_NODES.map(n=>n+'n'), datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        y: { title: { display: true, text: 'Speedup' }, beginAtZero: true },
+        x: { title: { display: true, text: 'Number of Nodes' } }
+      }
+    }
+  });
+}
+
+
+// ── Toggle Logic ──────────────────────────────────────────────
+function showMPI() {
+  document.getElementById('mpiSection').style.display = 'block';
+  document.getElementById('nonMpiSection').style.display = 'none';
+  document.getElementById('mpiSubToggle').style.display = 'flex';
+  document.querySelectorAll('.top-btn').forEach(function(b) { b.classList.remove('active'); });
+  event.target.classList.add('active');
+}
+
+function showNonMPI() {
+  document.getElementById('mpiSection').style.display = 'none';
+  document.getElementById('nonMpiSection').style.display = 'block';
+  document.getElementById('mpiSubToggle').style.display = 'none';
+  document.querySelectorAll('.top-btn').forEach(function(b) { b.classList.remove('active'); });
+  event.target.classList.add('active');
+}
+
+function showExample(ex) {
+  document.querySelectorAll('.section-content').forEach(function(s) { s.classList.remove('active'); });
+  document.querySelectorAll('.sub-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById(ex + 'Section').classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

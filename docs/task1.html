@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task 1 — Infrastructure Setup | EdgeGuard SS2026</title>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --surface2: #f8fafc;
+    --border: #e2e8f0;
+    --accent: #0d9e75;
+    --accent2: #2563a8;
+    --text: #0f172a;
+    --text2: #64748b;
+    --text3: #475569;
+    --warn: #d97706;
+    --danger: #dc2626;
+    --code-bg: #1e293b;
+    --code-text: #e2e8f0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: #1a3a5c;
+    padding: 0 40px;
+    border-bottom: 3px solid var(--accent);
+  }
+  .header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 36px 0 32px;
+  }
+  .breadcrumb {
+    font-size: 0.78rem;
+    color: #93c5fd;
+    margin-bottom: 12px;
+  }
+  .breadcrumb a { color: #6ee7c7; text-decoration: none; }
+  .breadcrumb a:hover { text-decoration: underline; }
+  .task-eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #6ee7c7;
+    margin-bottom: 10px;
+  }
+  header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+    margin-bottom: 10px;
+  }
+  header p {
+    color: #93c5fd;
+    font-size: 0.95rem;
+    max-width: 700px;
+    margin-bottom: 18px;
+  }
+  .header-meta {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .badge {
+    font-size: 0.75rem;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #cbd5e1;
+    background: rgba(255,255,255,0.08);
+  }
+  .badge.green { border-color: #6ee7c7; color: #6ee7c7; }
+  .badge.lead  { border-color: #93c5fd; color: #93c5fd; background: rgba(147,197,253,0.1); }
+
+  /* ── LAYOUT ── */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 48px 40px;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 100%;
+    margin-top: 32px;
+  }
+  .sidebar-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .sidebar-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .sidebar-card h4 {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text2);
+    margin-bottom: 12px;
+  }
+  .toc-list { list-style: none; }
+  .toc-list li {
+    border-bottom: 1px solid var(--border);
+  }
+  .toc-list li:last-child { border: none; }
+  .toc-list a {
+    display: block;
+    padding: 8px 0;
+    font-size: 0.85rem;
+    color: var(--text3);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .toc-list a:hover { color: var(--accent); }
+  .toc-list .sub { padding-left: 12px; font-size: 0.8rem; }
+
+  .hw-item {
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+  }
+  .hw-item:last-child { border: none; }
+  .hw-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  .hw-dot.green { background: var(--accent); }
+  .hw-dot.blue  { background: var(--accent2); }
+  .hw-dot.orange { background: var(--warn); }
+  .hw-name { font-weight: 700; color: var(--text); margin-bottom: 2px; font-size: 0.8rem; }
+  .hw-spec { color: var(--text2); font-size: 0.75rem; }
+
+  /* ── MAIN CONTENT ── */
+  .main { width: 100%; }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+
+  .section h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section h2::before {
+    content: '';
+    display: inline-block;
+    width: 3px; height: 18px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  .section h2.blue::before  { background: var(--accent2); }
+  .section h2.orange::before { background: var(--warn); }
+  .section h2.red::before   { background: var(--danger); }
+
+  .section h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 20px 0 8px;
+  }
+
+  .section p {
+    font-size: 0.9rem;
+    color: var(--text3);
+    line-height: 1.7;
+    margin-top: 8px;
+  }
+
+  /* ── CODE BLOCKS ── */
+  .code-wrap {
+    background: var(--code-bg);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 14px 0;
+    font-size: 0.82rem;
+  }
+  .code-header {
+    background: #0f172a;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .code-lang {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #64748b;
+  }
+  .code-title {
+    font-size: 0.78rem;
+    color: #94a3b8;
+  }
+  pre {
+    padding: 16px;
+    overflow-x: auto;
+    color: var(--code-text);
+    line-height: 1.7;
+    font-family: 'Courier New', 'Consolas', monospace;
+  }
+  .c-green  { color: #4ade80; }
+  .c-yellow { color: #fde68a; }
+  .c-blue   { color: #93c5fd; }
+  .c-orange { color: #fdba74; }
+  .c-gray   { color: #64748b; }
+  .c-red    { color: #fca5a5; }
+  .c-purple { color: #c4b5fd; }
+  .placeholder {
+    background: rgba(251,191,36,0.2);
+    color: #fbbf24;
+    padding: 0 3px;
+    border-radius: 3px;
+    font-style: italic;
+  }
+
+  /* ── FINDING BOXES ── */
+  .finding {
+    border-left: 3px solid var(--accent);
+    background: #f0fdf4;
+    padding: 14px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 12px 0;
+    font-size: 0.88rem;
+  }
+  .finding.warn  { border-color: var(--warn);   background: #fffbeb; }
+  .finding.bad   { border-color: var(--danger);  background: #fef2f2; }
+  .finding.info  { border-color: var(--accent2); background: #eff6ff; }
+  .finding h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+  .finding p  { font-size: 0.85rem; color: #444; margin: 0; }
+
+  /* ── TABLE ── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin: 14px 0;
+  }
+  .data-table th {
+    background: #1a3a5c;
+    color: white;
+    padding: 9px 14px;
+    text-align: left;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .data-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text3);
+  }
+  .data-table tr:hover td { background: var(--surface2); }
+  .data-table td b { color: var(--text); }
+  .good { color: var(--accent) !important; font-weight: 700; }
+  .warn-text { color: var(--warn) !important; font-weight: 700; }
+  .bad-text  { color: var(--danger) !important; font-weight: 700; }
+
+  /* ── STEPS ── */
+  .steps { list-style: none; counter-reset: steps; }
+  .step {
+    counter-increment: steps;
+    display: flex;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .step:last-child { border: none; }
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #1a3a5c;
+    color: white;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step-content h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 4px; }
+  .step-content p  { font-size: 0.85rem; color: var(--text3); }
+
+  /* ── FOOTER ── */
+  footer {
+    background: #1a3a5c;
+    border-top: 3px solid var(--accent);
+    padding: 24px 40px;
+    text-align: center;
+    font-size: 0.82rem;
+    color: #93c5fd;
+  }
+  footer a { color: #6ee7c7; text-decoration: none; }
+
+  @media (max-width: 900px) {
+    .container { grid-template-columns: 1fr; }
+    header, footer { padding: 0 20px; }
+    .container { padding: 24px 20px; }
+    .header-inner { padding: 24px 0; }
+    header h1 { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="breadcrumb">
+      <a href="index.html">← EdgeGuard Docs</a> / Task 1
+    </div>
+    <div class="task-eyebrow">Task 1 · Infrastructure</div>
+    <h1>Infrastructure Setup</h1>
+    <p>Heterogeneous Raspberry Pi cluster with PXE diskless boot, AI camera, Hailo NPU inference, and Kubernetes orchestration.</p>
+    <div class="header-meta">
+      <span class="badge lead">👤 Lead: Nauman Iftikhar</span>
+      <span class="badge green">✓ Complete</span>
+      <span class="badge">Raspberry Pi 5 · Pi 4 · Pi 3B+ × 8</span>
+      <span class="badge">k3s · PXE/NFS · Hailo AI HAT+</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar"><div class="sidebar-cards-grid">
+    <div class="sidebar-card">
+      <h4>On This Page</h4>
+      <ul class="toc-list">
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#hardware">Hardware</a></li>
+        <li><a href="#pxe">PXE Diskless Boot</a></li>
+        <li><a class="sub" href="#pxe-setup">Setup Steps</a></li>
+        <li><a class="sub" href="#pxe-benefits">Benefits & Drawbacks</a></li>
+        <li><a href="#network">Network Configuration</a></li>
+        <li><a href="#k3s">k3s Kubernetes</a></li>
+        <li><a href="#camera">Camera & AI Pipeline</a></li>
+        <li><a href="#findings">Key Findings</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-card">
+      <h4>Hardware Nodes</h4>
+      <div class="hw-item">
+        <span class="hw-dot green"></span>
+        <div>
+          <div class="hw-name">master-node (Pi 5)</div>
+          <div class="hw-spec">10.10.10.1 · 8GB RAM<br>Hailo AI HAT+ · k3s master</div>
+        </div>
+      </div>
+      <div class="hw-item">
+        <span class="hw-dot blue"></span>
+        <div>
+          <div class="hw-name">sensor-node (Pi 4)</div>
+          <div class="hw-spec">10.10.10.40 · 4GB RAM<br>AI Camera Module</div>
+        </div>
+      </div>
+      <div class="hw-item">
+        <span class="hw-dot orange"></span>
+        <div>
+          <div class="hw-name">pi3-01 to pi3-08</div>
+          <div class="hw-spec">10.10.10.21–28 · 1GB each<br>4 cores · PXE boot (7/8)</div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-card">
+      <h4>Quick Commands</h4>
+      <div style="font-size:0.78rem;color:var(--text3);line-height:1.8">
+        SSH to Pi5:<br>
+        <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:0.75rem">ssh admin@10.10.10.1</code><br><br>
+        SSH to Pi3-01:<br>
+        <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:0.75rem">ssh admin@10.10.10.21</code><br><br>
+        Check all nodes:<br>
+        <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:0.75rem">kubectl get nodes</code>
+      </div>
+    </div>
+  </div></aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+
+    <!-- Overview -->
+    <div class="section" id="overview">
+      <h2>Overview</h2>
+      <p>
+        We assembled a heterogeneous 10-node cluster from three types of Raspberry Pi hardware. 
+        The Pi 5 serves as the master node running all control-plane services. The Pi 4 is a 
+        dedicated sensor node with an AI Camera Module. Eight Pi 3B+ nodes act as compute workers 
+        for Kubernetes, MPI benchmarks, and HPL — 7 of 8 booting entirely over the network via 
+        PXE with no SD cards required.
+      </p>
+      <p>
+        All nodes communicate over a dedicated 100Mbit/s switched LAN (10.10.10.0/24). 
+        The Pi 5 provides DHCP, TFTP, NFS, and DNS for the entire subnet — making it 
+        the single point of administration for the cluster.
+      </p>
+    </div>
+
+    <!-- Hardware -->
+    <div class="section" id="hardware">
+      <h2>Hardware</h2>
+
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Node</th><th>Model</th><th>IP</th><th>RAM</th><th>Cores</th><th>Role</th><th>Boot</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>master-node</b></td>
+              <td>Raspberry Pi 5</td>
+              <td>10.10.10.1</td>
+              <td>8 GB</td>
+              <td>4 × ARM A76</td>
+              <td>k3s master · Inference · Storage</td>
+              <td>SD card</td>
+            </tr>
+            <tr>
+              <td><b>sensor-node</b></td>
+              <td>Raspberry Pi 4</td>
+              <td>10.10.10.40</td>
+              <td>4 GB</td>
+              <td>4 × ARM A72</td>
+              <td>Camera stream · Auto-scaler node</td>
+              <td>SD card</td>
+            </tr>
+            <tr>
+              <td><b>pi3-01 to pi3-05</b></td>
+              <td>Raspberry Pi 3B+</td>
+              <td>10.10.10.21–25</td>
+              <td>1 GB</td>
+              <td>4 × ARM A53</td>
+              <td>k3s worker · MPI compute</td>
+              <td class="good">PXE/NFS ✓</td>
+            </tr>
+            <tr>
+              <td><b>pi3-07, pi3-08</b></td>
+              <td>Raspberry Pi 3B+</td>
+              <td>10.10.10.27–28</td>
+              <td>1 GB</td>
+              <td>4 × ARM A53</td>
+              <td>k3s worker · MPI compute</td>
+              <td class="good">PXE/NFS ✓</td>
+            </tr>
+            <tr>
+              <td><b>pi3-06</b></td>
+              <td>Raspberry Pi 3B+</td>
+              <td>10.10.10.26</td>
+              <td>1 GB</td>
+              <td>4 × ARM A53</td>
+              <td>k3s worker · MPI compute</td>
+              <td class="warn-text">SD card ⚠️</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="finding info">
+        <h4>ℹ️ pi3-06 SD Card Boot</h4>
+        <p>pi3-06 boots from SD card intentionally — used to compare SD card vs PXE/NFS boot 
+        performance. Render benchmarks confirmed similar POV-Ray times (~53s) regardless of boot method, 
+        suggesting NFS I/O is not a bottleneck for compute-intensive workloads.</p>
+      </div>
+
+      <h3>Accessories</h3>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Component</th><th>Attached To</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><b>Hailo AI HAT+</b> (26 TOPS NPU)</td><td>Pi 5</td><td>Real-time AI inference at 14–17ms/frame</td></tr>
+            <tr><td><b>Raspberry Pi AI Camera</b></td><td>Pi 4</td><td>1080p camera with onboard IMX500 sensor</td></tr>
+            <tr><td><b>2× TP-Link TL-SG108E</b></td><td>Cluster</td><td>100Mbit/s managed switches for cluster LAN</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PXE Boot -->
+    <div class="section" id="pxe">
+      <h2 class="blue">PXE Diskless Boot</h2>
+      <p>
+        Seven Pi 3 nodes boot entirely over the network — no SD cards required. 
+        The Pi 5 serves DHCP and TFTP (via dnsmasq) for the initial boot firmware, 
+        and NFS for the root filesystem. Each Pi 3 gets its own NFS root directory 
+        exported from the Pi 5 at <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">/nfs/clients/pi3-0X</code>.
+      </p>
+
+      <h3 id="pxe-setup">Setup Steps</h3>
+      <ul class="steps">
+        <li class="step">
+          <span class="step-num">1</span>
+          <div class="step-content">
+            <h4>Enable USB/Network Boot on Pi 5</h4>
+            <p>Configure dnsmasq on Pi 5 to serve DHCP on eth0 (10.10.10.0/24) and TFTP boot files. 
+            Each Pi 3 MAC address gets a static IP assignment.</p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num">2</span>
+          <div class="step-content">
+            <h4>Prepare Root Filesystems on Pi 5</h4>
+            <p>Copy a base Raspberry Pi OS image for each Pi 3 into <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">/nfs/clients/pi3-0X/</code>. 
+            Each node gets its own copy so hostname, SSH keys, and k3s tokens can differ.</p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num">3</span>
+          <div class="step-content">
+            <h4>Export NFS Shares</h4>
+            <p>Add each Pi 3 root filesystem to <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">/etc/exports</code> on Pi 5. 
+            Also export <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">/nfs/shared</code> — the shared storage used by MPI and Task Distributor.</p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num">4</span>
+          <div class="step-content">
+            <h4>Configure TFTP Boot Files</h4>
+            <p>Each Pi 3 serial number gets a directory under <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">/tftpboot/</code> containing 
+            the firmware files. Pi 3 reads these on power-on before mounting NFS root.</p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num">5</span>
+          <div class="step-content">
+            <h4>Configure cmdline.txt</h4>
+            <p>Set the kernel command line in each node's TFTP boot directory to mount 
+            the NFS root: <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">root=/dev/nfs nfsroot=10.10.10.1:/nfs/clients/pi3-0X</code></p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num">6</span>
+          <div class="step-content">
+            <h4>Verify Boot</h4>
+            <p>Power on Pi 3 — it broadcasts DHCP request, Pi 5 assigns IP and points to TFTP, 
+            firmware loads, kernel mounts NFS root, system boots. Check with 
+            <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">ssh admin@10.10.10.21</code></p>
+          </div>
+        </li>
+      </ul>
+
+      <h3>Key Configuration Files</h3>
+
+      <div class="code-wrap">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-title">/etc/dnsmasq.conf (Pi 5 — excerpt)</span>
+        </div>
+        <pre><span class="c-gray"># DHCP for cluster LAN</span>
+<span class="c-yellow">interface</span>=eth0
+<span class="c-yellow">dhcp-range</span>=10.10.10.21,10.10.10.28,12h
+
+<span class="c-gray"># Static IP by MAC address</span>
+<span class="c-yellow">dhcp-host</span>=<span class="placeholder">&lt;pi3-01-MAC&gt;</span>,pi3-01,10.10.10.21
+<span class="c-yellow">dhcp-host</span>=<span class="placeholder">&lt;pi3-02-MAC&gt;</span>,pi3-02,10.10.10.22
+<span class="c-gray"># ... repeat for all 8 Pi3 nodes</span>
+
+<span class="c-gray"># TFTP for PXE boot</span>
+<span class="c-yellow">enable-tftp</span>
+<span class="c-yellow">tftp-root</span>=/tftpboot
+<span class="c-yellow">pxe-service</span>=0,<span class="c-green">"Raspberry Pi Boot"</span></pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-title">/etc/exports (Pi 5)</span>
+        </div>
+        <pre><span class="c-gray"># Per-node root filesystems</span>
+/nfs/clients/pi3-01  10.10.10.21(rw,sync,no_subtree_check,no_root_squash)
+/nfs/clients/pi3-02  10.10.10.22(rw,sync,no_subtree_check,no_root_squash)
+<span class="c-gray"># ... repeat for pi3-03 through pi3-08</span>
+
+<span class="c-gray"># Shared storage for MPI and Task Distributor</span>
+/nfs/shared  10.10.10.0/24(rw,sync,no_subtree_check,no_root_squash)</pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-title">Verify all Pi3s are online</span>
+        </div>
+        <pre><span class="c-gray"># Ping all Pi3 nodes</span>
+<span class="c-blue">for</span> ip <span class="c-blue">in</span> 10.10.10.21 10.10.10.22 10.10.10.23 10.10.10.24 \
+          10.10.10.25 10.10.10.26 10.10.10.27 10.10.10.28; <span class="c-blue">do</span>
+    echo -n <span class="c-green">"$ip: "</span>
+    ping -c 1 -W 1 $ip &gt;/dev/null &amp;&amp; echo <span class="c-green">"UP"</span> || echo <span class="c-red">"DOWN"</span>
+<span class="c-blue">done</span>
+
+<span class="c-gray"># Check uptime on all nodes</span>
+<span class="c-blue">for</span> ip <span class="c-blue">in</span> 10.10.10.21 10.10.10.22 10.10.10.23 10.10.10.24 \
+          10.10.10.25 10.10.10.26 10.10.10.27 10.10.10.28; <span class="c-blue">do</span>
+    echo -n <span class="c-green">"$ip: "</span>
+    ssh admin@$ip <span class="c-green">"uptime"</span> 2&gt;/dev/null
+<span class="c-blue">done</span></pre>
+      </div>
+
+      <h3 id="pxe-benefits">Benefits & Drawbacks</h3>
+
+      <div class="finding">
+        <h4>✅ Benefits of PXE Diskless Boot</h4>
+        <p><b>Centralized administration:</b> Update all 7 nodes by editing one NFS root on Pi 5 — no need to pull and flash individual SD cards.<br><br>
+        <b>No SD card failures:</b> SD cards are a common failure point in Pi clusters. PXE nodes have zero moving storage.<br><br>
+        <b>Faster re-imaging:</b> Rebuilding a node = copying a fresh NFS directory on Pi 5 (~2 minutes vs ~20 minutes per SD card).<br><br>
+        <b>Shared storage:</b> <code>/nfs/shared</code> is accessible on all nodes simultaneously — essential for MPI hostfiles, Task Distributor lockfile, and HPL binaries.</p>
+      </div>
+
+      <div class="finding warn">
+        <h4>⚠️ Drawbacks of PXE Diskless Boot</h4>
+        <p><b>Network dependency:</b> If Pi 5 goes down, all Pi 3 nodes lose their root filesystem and crash. Pi 5 is a single point of failure for storage.<br><br>
+        <b>NFS I/O adds latency:</b> All disk reads/writes traverse the network. Not noticeable for compute benchmarks, but impacts database or I/O-heavy workloads.<br><br>
+        <b>/tmp is tmpfs:</b> Temporary files are limited to ~450MB (half of 1GB RAM). Caused failures in POV-Ray 4800×3600 renders during Task 4 benchmarking.<br><br>
+        <b>Initial setup complexity:</b> TFTP + NFS + dnsmasq configuration is intricate and order-sensitive. Any misconfiguration silently fails at boot.</p>
+      </div>
+    </div>
+
+    <!-- Network -->
+    <div class="section" id="network">
+      <h2 class="orange">Network Configuration</h2>
+      <p>
+        The cluster uses a dedicated 100Mbit/s LAN on subnet 10.10.10.0/24 via two TP-Link 
+        TL-SG108E managed switches. Pi 5 also connects to external WiFi (wlan0) for internet 
+        access and remote SSH — the hotspot IP changes per session.
+      </p>
+
+      <div class="code-wrap">
+        <div class="code-header">
+          <span class="code-lang">text</span>
+          <span class="code-title">Network Topology</span>
+        </div>
+        <pre><span class="c-gray">External WiFi (wlan0)
+    │  IP: 192.168.x.x (changes per hotspot session)
+    ▼</span>
+<span class="c-green">┌─ Raspberry Pi 5 — master-node (eth0: 10.10.10.1) ──────┐
+│  DHCP · TFTP · NFS · k3s master · Hailo inference       │
+│  PostgreSQL · MinIO · Prometheus · Grafana               │
+└──────────────────────────┬──────────────────────────────┘</span>
+                           <span class="c-gray">│ 100Mbit/s</span>
+<span class="c-blue">        ┌──────────────────┴──────────────────────┐
+        │         Switch 1 (TP-Link)              │
+        │  Pi5 · pi3-01 · pi3-02 · pi3-03        │
+        │  pi3-04 · pi3-05 · pi3-06              │
+        └──────────────────┬──────────────────────┘</span>
+                           <span class="c-gray">│ uplink</span>
+<span class="c-orange">        ┌──────────────────┴──────────────────────┐
+        │         Switch 2 (TP-Link)              │
+        │  pi3-07 · pi3-08 · sensor-node (Pi4)   │
+        └─────────────────────────────────────────┘</span></pre>
+      </div>
+
+      <div class="finding info">
+        <h4>🔍 Two-Switch Topology Effect on MPI Benchmarks</h4>
+        <p>The two-switch setup was investigated during Monte Carlo Pi benchmarking. 
+        Original setup had Pi5 + 1× Pi3 on Switch 1 — ALL inter-Pi3 MPI traffic crossed 
+        the inter-switch uplink. After rearranging to Pi5 + 6× Pi3 on Switch 1, 
+        latency improved by 42% (0.749ms → 0.433ms) and jitter reduced by 3.4×. 
+        However the MPI parallelization plateau at 8 cores persisted — confirming 
+        it is a fundamental topology effect, not just switch latency.</p>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-title">Mount shared NFS on all Pi3 nodes (run on Pi5)</span>
+        </div>
+        <pre><span class="c-gray"># Required before running MPI or Task Distributor benchmarks</span>
+<span class="c-blue">for</span> ip <span class="c-blue">in</span> 10.10.10.21 10.10.10.22 10.10.10.23 10.10.10.24 \
+          10.10.10.25 10.10.10.26 10.10.10.27 10.10.10.28; <span class="c-blue">do</span>
+    ssh admin@$ip <span class="c-green">"sudo mkdir -p /nfs/shared && \
+        sudo mount -t nfs 10.10.10.1:/nfs/shared /nfs/shared"</span> &amp;
+<span class="c-blue">done</span>
+wait
+echo <span class="c-green">"NFS mounted on all Pi3 nodes"</span>
+
+<span class="c-gray"># Verify</span>
+<span class="c-blue">for</span> ip <span class="c-blue">in</span> 10.10.10.21 10.10.10.22 10.10.10.23 10.10.10.24 \
+          10.10.10.25 10.10.10.26 10.10.10.27 10.10.10.28; <span class="c-blue">do</span>
+    echo -n <span class="c-green">"$ip: "</span>
+    ssh admin@$ip <span class="c-green">"ls /nfs/shared/ 2&gt;/dev/null | wc -l || echo 'NOT MOUNTED'"</span>
+<span class="c-blue">done</span></pre>
+      </div>
+    </div>
+
+    <!-- k3s -->
+    <div class="section" id="k3s">
+      <h2>k3s Kubernetes</h2>
+      <p>
+        k3s is deployed across all 10 nodes with the Pi 5 as the control plane. 
+        Pod anti-affinity rules ensure replicated services (backend, frontend) 
+        never land on the same node — providing genuine high availability.
+        Before running benchmarks, k3s-agent must be stopped on all Pi 3 nodes 
+        to free CPU and memory.
+      </p>
+
+      <div class="code-wrap">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-title">Stop k3s-agent on all Pi3 nodes (before benchmarking)</span>
+        </div>
+        <pre><span class="c-gray"># Stop k3s-agent to free CPU and RAM for benchmarks</span>
+<span class="c-blue">for</span> ip <span class="c-blue">in</span> 10.10.10.21 10.10.10.22 10.10.10.23 10.10.10.24 \
+          10.10.10.25 10.10.10.26 10.10.10.27 10.10.10.28; <span class="c-blue">do</span>
+    ssh admin@$ip <span class="c-green">"sudo systemctl stop k3s-agent"</span> &amp;
+<span class="c-blue">done</span>
+wait
+echo <span class="c-green">"k3s-agent stopped on all Pi3 nodes"</span>
+
+<span class="c-gray"># Verify all stopped</span>
+<span class="c-blue">for</span> ip <span class="c-blue">in</span> 10.10.10.21 10.10.10.22 10.10.10.23 10.10.10.24 \
+          10.10.10.25 10.10.10.26 10.10.10.27 10.10.10.28; <span class="c-blue">do</span>
+    echo -n <span class="c-green">"$ip: "</span>
+    ssh admin@$ip <span class="c-green">"systemctl is-active k3s-agent"</span>
+<span class="c-blue">done</span>
+
+<span class="c-gray"># Restart k3s-agent after benchmarks</span>
+<span class="c-blue">for</span> ip <span class="c-blue">in</span> 10.10.10.21 10.10.10.22 10.10.10.23 10.10.10.24 \
+          10.10.10.25 10.10.10.26 10.10.10.27 10.10.10.28; <span class="c-blue">do</span>
+    ssh admin@$ip <span class="c-green">"sudo systemctl start k3s-agent"</span> &amp;
+<span class="c-blue">done</span>
+wait</pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-title">Check cluster health</span>
+        </div>
+        <pre><span class="c-gray"># View all nodes and their status</span>
+kubectl get nodes -o wide
+
+<span class="c-gray"># View all running pods</span>
+kubectl get pods -A
+
+<span class="c-gray"># Check services</span>
+kubectl get svc -A</pre>
+      </div>
+    </div>
+
+    <!-- Camera & AI -->
+    <div class="section" id="camera">
+      <h2 class="red">Camera & AI Inference Pipeline</h2>
+      <p>
+        The Pi 4 streams video from the AI Camera Module to the Pi 5 via ZMQ PubSub. 
+        The Pi 5 runs YOLOv8n on the Hailo AI HAT+ for face coverage detection — 
+        classifying each detected person as "face visible" (safe) or "face covered" (suspicious).
+      </p>
+
+      <h3>Model Pipeline: PyTorch → Hailo HEF</h3>
+      <ul class="steps">
+        <li class="step">
+          <span class="step-num">1</span>
+          <div class="step-content">
+            <h4>Dataset</h4>
+            <p>Roboflow Universe + custom raw data. Augmented inside Roboflow (horizontal flip, rotation, brightness variation).</p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num">2</span>
+          <div class="step-content">
+            <h4>Training</h4>
+            <p>YOLOv8n trained in Google Colab (free GPU tier). Output: PyTorch <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">.pt</code> weights file.</p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num">3</span>
+          <div class="step-content">
+            <h4>Conversion Challenge</h4>
+            <p>PyTorch <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px">.pt</code> cannot run directly on the Hailo AI HAT+. 
+            Conversion chain: <b>PT → ONNX → HAR → HEF</b> via Hailo Model Zoo. 
+            This required Hailo's dataflow compiler running on cloud GPUs (Massive Compute).</p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num">4</span>
+          <div class="step-content">
+            <h4>Streaming</h4>
+            <p>Original HTTP MJPEG stream had 2–4s latency. Replaced with ZMQ PubSub achieving ~50ms latency. 
+            Pi 4 publishes frames, Pi 5 subscribes and runs inference.</p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num">5</span>
+          <div class="step-content">
+            <h4>Result</h4>
+            <p>14–17ms per frame on Hailo NPU vs 2–3 minutes per frame on CPU — approximately 8,000× speedup. 
+            Sustained at 20 FPS @ 1080p. Inference service starts automatically via systemd on boot.</p>
+          </div>
+        </li>
+      </ul>
+
+      <div class="finding">
+        <h4>✅ Performance Result</h4>
+        <p>CPU inference (Pi 5 ARM): ~2–3 minutes per frame<br>
+        Hailo AI HAT+ (NPU): 14–17ms per frame<br>
+        <b>Speedup: ~8,000×</b> — enables real-time surveillance at 20 FPS @ 1080p</p>
+      </div>
+    </div>
+
+    <!-- Key Findings -->
+    <div class="section" id="findings">
+      <h2>Key Findings</h2>
+
+      <div class="finding">
+        <h4>✅ PXE boot is production-ready for Pi clusters</h4>
+        <p>All 7 PXE nodes survived multiple full power cycles and reboots with automatic recovery. 
+        Centralized administration eliminated the need to physically access individual nodes 
+        for software updates.</p>
+      </div>
+      <div class="finding warn">
+        <h4>⚠️ Pi3-02 power instability under sustained HPL load</h4>
+        <p>Pi3-02 spontaneously reboots when running HPL with N≥8000 across multiple nodes. 
+        Confirmed as a power supply limitation, not a software issue. 
+        Mitigated by placing pi3-02 last in the MPI node order — only used at 32 cores 
+        where load is distributed across all 8 nodes.</p>
+      </div>
+      <div class="finding warn">
+        <h4>⚠️ /tmp size is 453MB (half of Pi3 RAM)</h4>
+        <p>tmpfs mounts are limited to half of available RAM. POV-Ray at 4800×3600 resolution 
+        needs more than 453MB of intermediate storage in /tmp and consistently fails. 
+        Maximum feasible Task Distributor resolution is 3200×2400.</p>
+      </div>
+      <div class="finding info">
+        <h4>🔍 Two-switch topology affects MPI performance</h4>
+        <p>Original switch arrangement had all Pi3-to-Pi3 MPI traffic crossing the inter-switch 
+        uplink. Rearranging to keep most Pi3s on the same switch reduced MPI latency by 42% 
+        and jitter by 3.4× — measurable but did not eliminate the 8-core parallelization plateau.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+
+<div style="max-width:1100px;margin:0 auto;padding:0 40px 40px;display:flex;justify-content:space-between;align-items:center">
+  <a href="index.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text2);font-size:0.88rem;padding:10px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface);transition:all 0.15s" onmouseover="this.style.borderColor='#0d9e75';this.style.color='#0d9e75'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">
+    ← Back to Index
+  </a>
+  <a href="task2.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:white;font-size:0.88rem;font-weight:600;padding:10px 20px;border-radius:8px;background:#1a3a5c;border:1px solid #1a3a5c;transition:all 0.15s" onmouseover="this.style.background='#0d9e75';this.style.borderColor='#0d9e75'" onmouseout="this.style.background='#1a3a5c';this.style.borderColor='#1a3a5c'">
+    Task 2 — HPL Benchmark →
+  </a>
+</div>
+
+<footer>
+  EdgeGuard SS2026 · Frankfurt University of Applied Sciences · Prof. Dr. Christian Baun ·
+  <a href="index.html">← Back to Docs</a> ·
+  <a href="https://github.com/nauman-iftikhar/Edgeguard">GitHub</a> ·
+  Presentation: July 16, 2026 · Room 1-234 · 14:15–17:15
+</footer>
+
+</body>
+</html>

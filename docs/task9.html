@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task 9 — Telegram Bot | EdgeGuard SS2026</title>
+<style>
+  :root {
+    --bg: #f0f4f8; --surface: #ffffff; --surface2: #f8fafc;
+    --border: #e2e8f0; --accent: #0d9e75; --accent2: #2563a8;
+    --text: #0f172a; --text2: #64748b; --text3: #475569;
+    --warn: #d97706; --danger: #dc2626;
+    --code-bg: #1e293b; --code-text: #e2e8f0;
+    --telegram: #0088cc;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+
+  header { background: #1a3a5c; padding: 0 40px; border-bottom: 3px solid var(--accent); }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 36px 0 32px; }
+  .breadcrumb { font-size: 0.78rem; color: #93c5fd; margin-bottom: 12px; }
+  .breadcrumb a { color: #6ee7c7; text-decoration: none; }
+  .task-eyebrow { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: #6ee7c7; margin-bottom: 10px; }
+  header h1 { font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-bottom: 10px; }
+  header p { color: #93c5fd; font-size: 0.95rem; max-width: 700px; margin-bottom: 18px; }
+  .header-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge { font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; background: rgba(255,255,255,0.08); }
+  .badge.green { border-color: #6ee7c7; color: #6ee7c7; }
+  .badge.lead  { border-color: #93c5fd; color: #93c5fd; background: rgba(147,197,253,0.1); }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 48px 40px; }
+
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px; margin-bottom: 24px; }
+  .section h2 { font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .section h2::before { content: ''; display: inline-block; width: 3px; height: 18px; background: var(--accent); border-radius: 2px; }
+  .section h2.blue::before { background: var(--accent2); }
+  .section h2.orange::before { background: var(--warn); }
+  .section h2.telegram::before { background: var(--telegram); }
+  .section p { font-size: 0.9rem; color: var(--text3); line-height: 1.7; margin-top: 8px; }
+  .section h3 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
+
+  .code-wrap { background: var(--code-bg); border-radius: 8px; overflow: hidden; margin: 14px 0; }
+  .code-header { background: #0f172a; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .code-lang { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; }
+  .code-title { font-size: 0.78rem; color: #94a3b8; }
+  pre { padding: 16px; overflow-x: auto; color: var(--code-text); line-height: 1.7; font-family: 'Courier New', monospace; font-size: 0.82rem; }
+  .c-green { color: #4ade80; } .c-blue { color: #93c5fd; } .c-gray { color: #64748b; }
+  .c-yellow { color: #fde68a; } .c-orange { color: #fdba74; } .c-purple { color: #c4b5fd; }
+  .c-red { color: #fca5a5; }
+
+  .finding { border-left: 3px solid var(--accent); background: #f0fdf4; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .finding.warn { border-color: var(--warn); background: #fffbeb; }
+  .finding.bad  { border-color: var(--danger); background: #fef2f2; }
+  .finding.info { border-color: var(--accent2); background: #eff6ff; }
+  .finding.telegram { border-color: var(--telegram); background: #e8f4fd; }
+  .finding h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+  .finding p  { font-size: 0.85rem; color: #444; margin: 0; line-height: 1.6; }
+
+  /* Alert type cards */
+  .alert-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 16px 0; }
+  .alert-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .alert-card .icon { font-size: 1.5rem; margin-bottom: 8px; }
+  .alert-card h4 { font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .alert-card p { font-size: 0.8rem; color: var(--text3); margin: 0; line-height: 1.5; }
+  .alert-card .trigger { font-size: 0.72rem; color: var(--accent2); margin-top: 8px; font-family: 'Courier New', monospace; }
+
+  /* Telegram message preview */
+  .tg-preview { background: #e8f4fd; border: 1px solid #b3d9f0; border-radius: 12px; padding: 16px 20px; margin: 14px 0; font-size: 0.88rem; line-height: 1.7; }
+  .tg-preview .tg-header { font-size: 0.72rem; color: var(--telegram); font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .tg-preview .tg-body { color: #1a1a2e; font-family: 'Segoe UI', sans-serif; }
+  .tg-preview .tg-body b { color: #0f172a; }
+
+  /* Monitor table */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 14px 0; }
+  .data-table th { background: #1a3a5c; color: white; padding: 9px 14px; text-align: left; font-size: 0.78rem; text-transform: uppercase; }
+  .data-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--text3); vertical-align: top; }
+  .data-table tr:hover td { background: var(--surface2); }
+  .data-table td b { color: var(--text); }
+  .good { color: var(--accent) !important; font-weight: 700; }
+
+  .bottom-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+  .nav-btn { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 0.88rem; padding: 10px 20px; border-radius: 8px; font-weight: 600; transition: all 0.15s; }
+  .nav-btn.prev { color: var(--text2); border: 1px solid var(--border); background: var(--surface); }
+  .nav-btn.prev:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn.next { color: white; background: #1a3a5c; border: 1px solid #1a3a5c; }
+  .nav-btn.next:hover { background: var(--accent); border-color: var(--accent); }
+
+  footer { background: #1a3a5c; border-top: 3px solid var(--accent); padding: 24px 40px; text-align: center; font-size: 0.82rem; color: #93c5fd; }
+  footer a { color: #6ee7c7; text-decoration: none; }
+
+  @media (max-width: 768px) {
+    header, footer { padding: 0 20px; }
+    .container { padding: 24px 20px; }
+    header h1 { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="breadcrumb"><a href="index.html">← EdgeGuard Docs</a> / Task 9</div>
+    <div class="task-eyebrow">Task 9 · Telegram Bot</div>
+    <h1>Telegram Notification Bot</h1>
+    <p>Real-time alerts for security events and cluster health — sent directly to the team Telegram group with snapshots, confidence scores, and actionable information.</p>
+    <div class="header-meta">
+      <span class="badge lead">👤 Lead: Negar Mohammadi, Ikbela Halili, Krish</span>
+      <span class="badge green">✓ Complete</span>
+      <span class="badge">Telegram Bot API · Python · Background Thread</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Overview -->
+  <div class="section">
+    <h2>Overview</h2>
+    <p>
+      The EdgeGuard Telegram Bot sends real-time notifications to the team's Telegram group 
+      whenever something important happens in the system. There are two categories of alerts: 
+      <b>security alerts</b> triggered by AI detection events, and <b>cluster health alerts</b> 
+      triggered by infrastructure problems.
+    </p>
+    <p>
+      The bot is integrated directly into the Flask backend — no separate process required. 
+      A background thread runs continuously inside the backend, monitoring cluster health 
+      every 30 seconds and sending Telegram messages when thresholds are crossed or 
+      nodes go offline. Security alerts are triggered immediately when the inference 
+      service posts a detection event to the backend.
+    </p>
+
+    <div class="finding telegram">
+      <h4>📱 Why Telegram and not email or Slack?</h4>
+      <p>Telegram Bot API is free, requires no account for recipients (just joining a group), 
+      works globally without VPN, supports image attachments in the same message as text, 
+      and has a simple HTTP API that requires no SDK — just a POST request. 
+      The entire bot integration is under 50 lines of Python.</p>
+    </div>
+  </div>
+
+  <!-- How Telegram Bot API works -->
+  <div class="section">
+    <h2 class="telegram">How the Telegram Bot API Works</h2>
+    <p>
+      Telegram provides a simple HTTP API for bots. You create a bot via <b>@BotFather</b> 
+      on Telegram — it gives you a unique token. You then send HTTP POST requests to 
+      Telegram's servers with your token, and Telegram delivers the message to any 
+      chat or group the bot has been added to.
+    </p>
+    <p>
+      The bot does not need to run a server or listen for connections — it only needs 
+      outbound internet access from Pi5. The Pi5 connects to its WiFi hotspot 
+      which provides internet access, so all Telegram API calls go out through wlan0.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><span class="code-title">Core Telegram send functions</span></div>
+      <pre><span class="c-blue">import</span> requests
+
+TELEGRAM_TOKEN = <span class="c-green">"your_bot_token"</span>   <span class="c-gray"># from @BotFather</span>
+CHAT_ID = <span class="c-green">"your_group_chat_id"</span>   <span class="c-gray"># team Telegram group</span>
+BASE_URL = <span class="c-green">f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"</span>
+
+<span class="c-gray"># Send text message</span>
+<span class="c-blue">def</span> <span class="c-green">send_message</span>(text):
+    requests.post(
+        <span class="c-green">f"{BASE_URL}/sendMessage"</span>,
+        json={
+            <span class="c-green">"chat_id"</span>: CHAT_ID,
+            <span class="c-green">"text"</span>: text,
+            <span class="c-green">"parse_mode"</span>: <span class="c-green">"HTML"</span>    <span class="c-gray"># supports &lt;b&gt;, &lt;i&gt;, &lt;code&gt;</span>
+        },
+        timeout=<span class="c-orange">5</span>
+    )
+
+<span class="c-gray"># Send message with image (for security alerts)</span>
+<span class="c-blue">def</span> <span class="c-green">send_photo</span>(image_bytes, caption):
+    requests.post(
+        <span class="c-green">f"{BASE_URL}/sendPhoto"</span>,
+        data={
+            <span class="c-green">"chat_id"</span>: CHAT_ID,
+            <span class="c-green">"caption"</span>: caption,
+            <span class="c-green">"parse_mode"</span>: <span class="c-green">"HTML"</span>
+        },
+        files={<span class="c-green">"photo"</span>: (<span class="c-green">"snapshot.jpg"</span>, image_bytes, <span class="c-green">"image/jpeg"</span>)},
+        timeout=<span class="c-orange">10</span>
+    )</pre>
+    </div>
+  </div>
+
+  <!-- Alert Types -->
+  <div class="section">
+    <h2 class="orange">Alert Types</h2>
+    <p>The bot sends two categories of alerts — security events from AI detection, and cluster health events from infrastructure monitoring.</p>
+
+    <div class="alert-grid">
+      <div class="alert-card">
+        <div class="icon">🚨</div>
+        <h4>Suspicious Detection</h4>
+        <p>Face covered detected by YOLOv8n. Includes snapshot image, confidence score, timestamp, and camera ID.</p>
+        <div class="trigger">Trigger: inference → POST /api/alerts</div>
+      </div>
+      <div class="alert-card">
+        <div class="icon">📴</div>
+        <h4>Node Offline</h4>
+        <p>A Pi3 node stopped responding to Prometheus scrapes — node_up == 0 for more than 30 seconds.</p>
+        <div class="trigger">Trigger: Prometheus node_up == 0</div>
+      </div>
+      <div class="alert-card">
+        <div class="icon">❌</div>
+        <h4>Pod Crashed</h4>
+        <p>A k3s pod is in CrashLoopBackOff or Error state — backend, frontend, inference, or any other service.</p>
+        <div class="trigger">Trigger: kubectl pod status != Running</div>
+      </div>
+      <div class="alert-card">
+        <div class="icon">🌡️</div>
+        <h4>High Temperature</h4>
+        <p>Any Pi3 node exceeds 75°C — risk of CPU throttling which would affect benchmark results.</p>
+        <div class="trigger">Trigger: node_thermal_zone_temp > 75000</div>
+      </div>
+      <div class="alert-card">
+        <div class="icon">🔥</div>
+        <h4>High CPU</h4>
+        <p>Cluster average CPU exceeds the auto-scaler threshold — Pi4 is joining the cluster as emergency node.</p>
+        <div class="trigger">Trigger: avg CPU > threshold %</div>
+      </div>
+      <div class="alert-card">
+        <div class="icon">✅</div>
+        <h4>Node Recovered</h4>
+        <p>A previously offline node has come back online — sent once when Prometheus detects node_up == 1 again.</p>
+        <div class="trigger">Trigger: node_up returns to 1</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Message Format -->
+  <div class="section">
+    <h2>Message Format — Examples</h2>
+
+    <h3>Security Alert — Face Covered Detected</h3>
+    <div class="tg-preview">
+      <div class="tg-header">📱 Telegram Message (with snapshot image attached)</div>
+      <div class="tg-body">
+        🚨 <b>SUSPICIOUS EVENT DETECTED</b><br><br>
+        📷 <b>Camera:</b> sensor-node (Pi4)<br>
+        🎯 <b>Confidence:</b> 94.3%<br>
+        🏷️ <b>Event:</b> face_covered<br>
+        🕐 <b>Time:</b> 2026-07-11 14:23:07<br>
+        🔗 <b>Alert ID:</b> #247<br><br>
+        View in EdgeGuard dashboard for full details.
+      </div>
+    </div>
+
+    <h3>Node Offline Alert</h3>
+    <div class="tg-preview">
+      <div class="tg-header">📱 Telegram Message (text only)</div>
+      <div class="tg-body">
+        📴 <b>NODE OFFLINE</b><br><br>
+        🖥️ <b>Node:</b> pi3-04 (10.10.10.24)<br>
+        ⏱️ <b>Detected at:</b> 2026-07-11 14:25:12<br>
+        📊 <b>Last seen:</b> 2026-07-11 14:24:41<br><br>
+        ⚠️ This node is no longer responding to health checks. 
+        k3s will attempt to reschedule any pods that were running on this node.
+      </div>
+    </div>
+
+    <h3>Pod Crashed Alert</h3>
+    <div class="tg-preview">
+      <div class="tg-header">📱 Telegram Message (text only)</div>
+      <div class="tg-body">
+        ❌ <b>POD CRASHED</b><br><br>
+        📦 <b>Pod:</b> edgeguard-backend-7d4f9b-xk2p1<br>
+        🖥️ <b>Node:</b> pi3-03 (10.10.10.23)<br>
+        💥 <b>Status:</b> CrashLoopBackOff<br>
+        🔄 <b>Restarts:</b> 3<br>
+        🕐 <b>Time:</b> 2026-07-11 14:30:45<br><br>
+        k3s is attempting to restart the pod automatically.
+      </div>
+    </div>
+
+    <h3>Node Recovered</h3>
+    <div class="tg-preview">
+      <div class="tg-header">📱 Telegram Message (text only)</div>
+      <div class="tg-body">
+        ✅ <b>NODE RECOVERED</b><br><br>
+        🖥️ <b>Node:</b> pi3-04 (10.10.10.24)<br>
+        ⏱️ <b>Recovered at:</b> 2026-07-11 14:28:33<br>
+        ⬇️ <b>Downtime:</b> ~3 minutes<br><br>
+        Node is back online and accepting workloads.
+      </div>
+    </div>
+  </div>
+
+  <!-- Implementation -->
+  <div class="section">
+    <h2 class="blue">Implementation — Cluster Health Monitor</h2>
+    <p>
+      A background thread runs inside the Flask backend process, checking cluster health 
+      every 30 seconds. It maintains a state dictionary of which nodes and pods were 
+      previously healthy — so it only sends an alert when something <b>changes</b> 
+      (goes from healthy to unhealthy, or recovers), not on every polling cycle.
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><span class="code-title">Cluster health monitor — background thread</span></div>
+      <pre><span class="c-blue">import</span> threading
+<span class="c-blue">import</span> requests
+<span class="c-blue">import</span> subprocess
+<span class="c-blue">import</span> json
+
+PROMETHEUS_URL = <span class="c-green">"http://prometheus-service:9090"</span>
+NODES = [
+    {<span class="c-green">"name"</span>: <span class="c-green">"pi3-01"</span>, <span class="c-green">"ip"</span>: <span class="c-green">"10.10.10.21"</span>},
+    {<span class="c-green">"name"</span>: <span class="c-green">"pi3-02"</span>, <span class="c-green">"ip"</span>: <span class="c-green">"10.10.10.22"</span>},
+    <span class="c-gray"># ... all 8 Pi3 nodes</span>
+]
+
+node_state = {}   <span class="c-gray"># tracks which nodes were last seen online</span>
+pod_state  = {}   <span class="c-gray"># tracks which pods were last seen Running</span>
+
+<span class="c-blue">def</span> <span class="c-green">query_prometheus</span>(query):
+    r = requests.get(
+        <span class="c-green">f"{PROMETHEUS_URL}/api/v1/query"</span>,
+        params={<span class="c-green">"query"</span>: query}, timeout=<span class="c-orange">5</span>
+    )
+    <span class="c-blue">return</span> r.json()[<span class="c-green">"data"</span>][<span class="c-green">"result"</span>]
+
+<span class="c-blue">def</span> <span class="c-green">check_nodes</span>():
+    <span class="c-gray"># Query Prometheus: which nodes are UP?</span>
+    results = query_prometheus(<span class="c-green">"up{job='node-exporter'}"</span>)
+    online_nodes = {r[<span class="c-green">"metric"</span>][<span class="c-green">"instance"</span>]: r[<span class="c-green">"value"</span>][1] == <span class="c-green">"1"</span> <span class="c-blue">for</span> r <span class="c-blue">in</span> results}
+
+    <span class="c-blue">for</span> node <span class="c-blue">in</span> NODES:
+        instance = <span class="c-green">f"{node['ip']}:9100"</span>
+        is_online = online_nodes.get(instance, <span class="c-orange">False</span>)
+        was_online = node_state.get(node[<span class="c-green">"name"</span>], <span class="c-orange">True</span>)
+
+        <span class="c-blue">if</span> was_online <span class="c-blue">and not</span> is_online:
+            <span class="c-gray"># Node just went offline</span>
+            send_message(<span class="c-green">f"📴 &lt;b&gt;NODE OFFLINE&lt;/b&gt;\n\n"</span>
+                        <span class="c-green">f"🖥️ &lt;b&gt;Node:&lt;/b&gt; {node['name']} ({node['ip']})\n"</span>
+                        <span class="c-green">f"⏱️ &lt;b&gt;Detected at:&lt;/b&gt; {datetime.now()}"</span>)
+
+        <span class="c-blue">elif not</span> was_online <span class="c-blue">and</span> is_online:
+            <span class="c-gray"># Node recovered</span>
+            send_message(<span class="c-green">f"✅ &lt;b&gt;NODE RECOVERED&lt;/b&gt;\n\n"</span>
+                        <span class="c-green">f"🖥️ &lt;b&gt;Node:&lt;/b&gt; {node['name']} ({node['ip']})"</span>)
+
+        node_state[node[<span class="c-green">"name"</span>]] = is_online
+
+<span class="c-blue">def</span> <span class="c-green">check_pods</span>():
+    <span class="c-gray"># Get all pods and check for non-Running states</span>
+    result = subprocess.run(
+        [<span class="c-green">"kubectl"</span>, <span class="c-green">"get"</span>, <span class="c-green">"pods"</span>, <span class="c-green">"-A"</span>, <span class="c-green">"-o"</span>, <span class="c-green">"json"</span>],
+        capture_output=<span class="c-orange">True</span>, text=<span class="c-orange">True</span>
+    )
+    pods = json.loads(result.stdout)[<span class="c-green">"items"</span>]
+
+    <span class="c-blue">for</span> pod <span class="c-blue">in</span> pods:
+        name   = pod[<span class="c-green">"metadata"</span>][<span class="c-green">"name"</span>]
+        phase  = pod[<span class="c-green">"status"</span>].get(<span class="c-green">"phase"</span>, <span class="c-green">"Unknown"</span>)
+        node   = pod[<span class="c-green">"spec"</span>].get(<span class="c-green">"nodeName"</span>, <span class="c-green">"unknown"</span>)
+
+        was_ok = pod_state.get(name, <span class="c-orange">True</span>)
+        is_ok  = phase <span class="c-blue">in</span> [<span class="c-green">"Running"</span>, <span class="c-green">"Succeeded"</span>]
+
+        <span class="c-blue">if</span> was_ok <span class="c-blue">and not</span> is_ok:
+            <span class="c-gray"># Pod just crashed</span>
+            restarts = pod[<span class="c-green">"status"</span>][<span class="c-green">"containerStatuses"</span>][<span class="c-orange">0</span>][<span class="c-green">"restartCount"</span>]
+            send_message(<span class="c-green">f"❌ &lt;b&gt;POD CRASHED&lt;/b&gt;\n\n"</span>
+                        <span class="c-green">f"📦 &lt;b&gt;Pod:&lt;/b&gt; {name}\n"</span>
+                        <span class="c-green">f"🖥️ &lt;b&gt;Node:&lt;/b&gt; {node}\n"</span>
+                        <span class="c-green">f"💥 &lt;b&gt;Status:&lt;/b&gt; {phase}\n"</span>
+                        <span class="c-green">f"🔄 &lt;b&gt;Restarts:&lt;/b&gt; {restarts}"</span>)
+
+        pod_state[name] = is_ok
+
+<span class="c-blue">def</span> <span class="c-green">check_temperature</span>():
+    <span class="c-gray"># Query Prometheus for temperature > 75°C (75000 millidegrees)</span>
+    results = query_prometheus(
+        <span class="c-green">"node_thermal_zone_temp{job='node-exporter'} > 75000"</span>
+    )
+    <span class="c-blue">for</span> r <span class="c-blue">in</span> results:
+        node = r[<span class="c-green">"metric"</span>][<span class="c-green">"instance"</span>]
+        temp = float(r[<span class="c-green">"value"</span>][1]) / <span class="c-orange">1000</span>
+        send_message(<span class="c-green">f"🌡️ &lt;b&gt;HIGH TEMPERATURE&lt;/b&gt;\n\n"</span>
+                    <span class="c-green">f"🖥️ &lt;b&gt;Node:&lt;/b&gt; {node}\n"</span>
+                    <span class="c-green">f"🌡️ &lt;b&gt;Temperature:&lt;/b&gt; {temp:.1f}°C\n"</span>
+                    <span class="c-green">f"⚠️ Risk of CPU throttling above 80°C"</span>)
+
+<span class="c-blue">def</span> <span class="c-green">health_monitor_loop</span>():
+    <span class="c-blue">while</span> <span class="c-orange">True</span>:
+        <span class="c-blue">try</span>:
+            check_nodes()
+            check_pods()
+            check_temperature()
+        <span class="c-blue">except</span> Exception <span class="c-blue">as</span> e:
+            print(<span class="c-green">f"Health monitor error: {e}"</span>)
+        threading.Event().wait(<span class="c-orange">30</span>)  <span class="c-gray"># check every 30 seconds</span>
+
+<span class="c-gray"># Start background thread when Flask app starts</span>
+monitor_thread = threading.Thread(target=health_monitor_loop, daemon=<span class="c-orange">True</span>)
+monitor_thread.start()</pre>
+    </div>
+
+    <h3>Security Alert — Triggered by Inference Service</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><span class="code-title">Security alert with snapshot — triggered on detection</span></div>
+      <pre><span class="c-gray"># Called when inference service POSTs to /api/alerts</span>
+<span class="c-blue">def</span> <span class="c-green">send_security_alert</span>(alert, image_bytes):
+    caption = (
+        <span class="c-green">f"🚨 &lt;b&gt;SUSPICIOUS EVENT DETECTED&lt;/b&gt;\n\n"</span>
+        <span class="c-green">f"📷 &lt;b&gt;Camera:&lt;/b&gt; {alert['camera_id']}\n"</span>
+        <span class="c-green">f"🎯 &lt;b&gt;Confidence:&lt;/b&gt; {alert['confidence']*100:.1f}%\n"</span>
+        <span class="c-green">f"🏷️ &lt;b&gt;Event:&lt;/b&gt; {alert['event_type']}\n"</span>
+        <span class="c-green">f"🕐 &lt;b&gt;Time:&lt;/b&gt; {alert['timestamp']}\n"</span>
+        <span class="c-green">f"🔗 &lt;b&gt;Alert ID:&lt;/b&gt; #{alert['id']}"</span>
+    )
+
+    <span class="c-blue">if</span> image_bytes:
+        send_photo(image_bytes, caption)   <span class="c-gray"># image + text together</span>
+    <span class="c-blue">else</span>:
+        send_message(caption)              <span class="c-gray"># text only if no image</span></pre>
+    </div>
+  </div>
+
+  <!-- Setup -->
+  <div class="section">
+    <h2>Setup — How to Create a Telegram Bot</h2>
+
+    <div style="list-style:none">
+      <div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="width:28px;height:28px;border-radius:50%;background:#1a3a5c;color:white;font-size:0.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+        <div><b style="display:block;margin-bottom:3px">Open Telegram and message @BotFather</b><span style="font-size:0.85rem;color:var(--text3)">Type <code style="background:#f1f5f9;padding:1px 4px;border-radius:3px">/newbot</code> and follow the prompts. Choose a name and username for the bot. BotFather gives you a token like <code style="background:#f1f5f9;padding:1px 4px;border-radius:3px">1234567890:ABCdefGHI...</code></span></div>
+      </div>
+      <div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="width:28px;height:28px;border-radius:50%;background:#1a3a5c;color:white;font-size:0.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+        <div><b style="display:block;margin-bottom:3px">Add the bot to your team Telegram group</b><span style="font-size:0.85rem;color:var(--text3)">Search for the bot by username, add it to the group, and make it an admin so it can send messages.</span></div>
+      </div>
+      <div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="width:28px;height:28px;border-radius:50%;background:#1a3a5c;color:white;font-size:0.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+        <div><b style="display:block;margin-bottom:3px">Get the group Chat ID</b>
+        <span style="font-size:0.85rem;color:var(--text3)">Send a message in the group, then visit:</span>
+        <div style="background:var(--code-bg);border-radius:6px;padding:8px 12px;margin-top:6px;font-family:monospace;font-size:0.8rem;color:var(--code-text)">https://api.telegram.org/bot&lt;YOUR_TOKEN&gt;/getUpdates</div>
+        <span style="font-size:0.85rem;color:var(--text3)">Find <code style="background:#f1f5f9;padding:1px 4px;border-radius:3px">"chat":{"id": -1234567890}</code> — the negative number is your Chat ID.</span></div>
+      </div>
+      <div style="display:flex;gap:14px;padding:12px 0">
+        <div style="width:28px;height:28px;border-radius:50%;background:#1a3a5c;color:white;font-size:0.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">4</div>
+        <div><b style="display:block;margin-bottom:3px">Add token and chat ID to backend config</b><span style="font-size:0.85rem;color:var(--text3)">Set as environment variables in the k3s Deployment or in a Kubernetes Secret.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monitoring table -->
+  <div class="section">
+    <h2>Complete Monitoring Summary</h2>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead>
+          <tr><th>Alert Type</th><th>Trigger Condition</th><th>Data Source</th><th>Includes Image?</th><th>Recovery Alert?</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>🚨 Suspicious Detection</b></td><td>face_covered with confidence &gt; 50%</td><td>Inference service → /api/alerts</td><td class="good">Yes — snapshot</td><td>No</td></tr>
+          <tr><td><b>📴 Node Offline</b></td><td>node_up == 0 for &gt; 30s</td><td>Prometheus</td><td>No</td><td class="good">Yes</td></tr>
+          <tr><td><b>❌ Pod Crashed</b></td><td>Pod phase != Running/Succeeded</td><td>kubectl get pods</td><td>No</td><td class="good">Yes</td></tr>
+          <tr><td><b>🌡️ High Temperature</b></td><td>node_thermal_zone_temp &gt; 75°C</td><td>Prometheus</td><td>No</td><td>No (alert per cycle)</td></tr>
+          <tr><td><b>🔥 High CPU</b></td><td>Cluster avg CPU &gt; threshold</td><td>Prometheus</td><td>No</td><td class="good">Yes (Pi4 left)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Key Findings -->
+  <div class="section">
+    <h2>Key Findings</h2>
+
+    <div class="finding">
+      <h4>✅ Comprehensive coverage — security and infrastructure in one bot</h4>
+      <p>The same Telegram bot handles both AI detection alerts (with snapshots) and 
+      infrastructure alerts (node down, pod crashed, high temperature). 
+      The team gets one notification channel for everything happening in EdgeGuard.</p>
+    </div>
+    <div class="finding">
+      <h4>✅ State-aware — only alerts on changes not every cycle</h4>
+      <p>The health monitor tracks previous state for every node and pod. 
+      It only sends a Telegram message when something changes — going offline or 
+      recovering. Without this, a node that stays offline would send an alert 
+      every 30 seconds flooding the group chat.</p>
+    </div>
+    <div class="finding warn">
+      <h4>⚠️ Requires internet access on Pi5</h4>
+      <p>All Telegram API calls go out through Pi5's wlan0 (WiFi hotspot connection). 
+      If Pi5 loses internet access, alerts cannot be delivered even if the cluster 
+      itself is healthy on the LAN. The health monitor continues running and 
+      will resume sending alerts when internet is restored.</p>
+    </div>
+    <div class="finding info">
+      <h4>🔍 Why a daemon thread and not a separate service?</h4>
+      <p>Running the health monitor as a background thread inside Flask means 
+      no extra pod, no extra Dockerfile, no extra k3s Deployment to manage. 
+      The daemon=True flag ensures the thread stops automatically when Flask 
+      stops — no zombie processes. The tradeoff is that if both Flask replicas 
+      crash simultaneously, monitoring stops until a replica recovers.</p>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <a href="task8.html" class="nav-btn prev">← Task 8 — Frontend</a>
+    <a href="bonus.html" class="nav-btn next">Bonus — Auto-Scaler →</a>
+  </div>
+
+</div>
+
+<footer>
+  EdgeGuard SS2026 · Frankfurt University of Applied Sciences · Prof. Dr. Christian Baun ·
+  <a href="index.html">← Back to Docs</a> ·
+  <a href="https://github.com/nauman-iftikhar/Edgeguard">GitHub</a> ·
+  Presentation: July 16, 2026 · Room 1-234 · 14:15–17:15
+</footer>
+
+</body>
+</html>

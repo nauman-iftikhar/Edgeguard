@@ -1,0 +1,4 @@
+theme: jekyll-theme-cayman
+title: EdgeGuard — Edge AI Surveillance System
+description: Production-grade edge computing surveillance system on a heterogeneous Raspberry Pi cluster. Frankfurt University of Applied Sciences, Cloud Computing SS2026.
+show_downloads: false

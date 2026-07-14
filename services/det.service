@@ -1,0 +1,17 @@
+[Unit]
+Description=EdgeGuard Detection Service (det.py)
+After=network.target k3s.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/hello
+ExecStart=/usr/bin/python3 /home/admin/hello/det.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/admin/det.log
+StandardError=append:/home/admin/det.log
+
+[Install]
+WantedBy=multi-user.target
