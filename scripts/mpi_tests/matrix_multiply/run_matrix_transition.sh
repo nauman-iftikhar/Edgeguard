@@ -1,0 +1,57 @@
+#!/bin/bash
+BINARY=/home/admin/matrix_multiply
+COOLDOWN=30
+CORES=(1 2 4 8 16 32)
+
+run_sweep() {
+    local N=$1
+    local RESULTS=/nfs/shared/matrix_results_${N}.csv
+    echo "cores,N,run,time_seconds" > $RESULTS
+    echo "====== Starting N=$N at $(date) ======"
+
+    for RUN in $(seq 1 5); do
+        echo "=== N=$N Sweep $RUN of 5 ==="
+        for CORE in "${CORES[@]}"; do
+            echo "Running: $CORE cores, N=$N, run $RUN..."
+
+            for ip in 10.10.10.21 10.10.10.22 10.10.10.23 10.10.10.24 10.10.10.25 10.10.10.26 10.10.10.27 10.10.10.28; do
+                ssh admin@$ip "pkill -f matrix_multiply" 2>/dev/null
+            done
+            sleep 3
+
+            TEMP=$(ssh admin@10.10.10.21 "vcgencmd measure_temp" 2>/dev/null | grep -o '[0-9.]*')
+            while (( $(echo "$TEMP > 65" | bc -l) )); do
+                echo "Cooling... ${TEMP}°C"
+                sleep 30
+                TEMP=$(ssh admin@10.10.10.21 "vcgencmd measure_temp" 2>/dev/null | grep -o '[0-9.]*')
+            done
+
+            TMPHOST=/tmp/hostfile_${CORE}
+            python3 -c "
+cores = $CORE
+nodes = ['pi3-01','pi3-02','pi3-03','pi3-04','pi3-05','pi3-06','pi3-07','pi3-08']
+remaining = cores
+for n in nodes:
+    if remaining <= 0: break
+    slots = min(4, remaining)
+    print(f'{n} slots={slots}')
+    remaining -= slots
+" > $TMPHOST
+
+            RESULT=$(mpirun -np $CORE --hostfile $TMPHOST $BINARY $N 2>/dev/null)
+            TIME=$(echo $RESULT | awk '{print $1}')
+            echo "$CORE,$N,$RUN,$TIME"
+            echo "$CORE,$N,$RUN,$TIME" >> $RESULTS
+            sleep $COOLDOWN
+        done
+        echo "--- N=$N Sweep $RUN complete ---"
+    done
+    echo "====== N=$N COMPLETE at $(date) ======"
+}
+
+run_sweep 1000
+run_sweep 1500
+run_sweep 3250
+run_sweep 3500
+run_sweep 3750
+echo "ALL SWEEPS COMPLETE at $(date)!"
